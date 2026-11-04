@@ -1,5 +1,5 @@
 # Architecture rules
-- Mock payment short-circuits before authentication and live writes; a separate fixed-fictional-ID presentation handshake connects open same-browser booking/queue tabs, never user input, clinical records, permissions, or room authorization.
+- Mock payment short-circuits before authentication and live consultation writes; in mock-login mode, bookings go to a separate auto-expiring shared test queue (display name + visit reason only, reached solely through bounded functions with an active-row cap) so they reach doctors on other devices, and it never touches consultations, clinical records, permissions, or room authorization.
 - In-app booking alerts derive from authorized reads; sample cross-tab acceptance signals contain only a fixed fictional visit ID and never update permissions, assignment, or clinical records.
 - Share fictional patient identities across sample queue, completed history, and journal to preserve ID-based continuity without seeding live records.
 - Patient journals use append-only server-derived patient/doctor identity and timestamp through authenticated audited RPCs; verified assigned doctors can read the patient's cross-visit timeline, while sample journals remain isolated in memory.
