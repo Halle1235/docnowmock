@@ -12,6 +12,7 @@ import ClinicalNotesPanel from "@/components/ClinicalNotesPanel";
 import { doctorWorkspace, useDoctorWorkspace } from "@/lib/doctor-workspace";
 import CallChat from "@/components/CallChat";
 import { patientWorkspace, usePatientWorkspace } from "@/lib/patient-workspace";
+import { dailyPresentation } from "@/lib/daily-presentation";
 
 const VideoCall = () => {
   const { consultationId } = useParams<{ consultationId: string }>();
@@ -83,14 +84,7 @@ const VideoCall = () => {
         const frame = DailyIframe.createFrame(containerRef.current, {
           showLeaveButton: false,
           startAudioOff: true,
-          theme: { colors: {
-            accent: `hsl(${getComputedStyle(document.documentElement).getPropertyValue("--call-accent").trim()})`,
-            accentText: `hsl(${getComputedStyle(document.documentElement).getPropertyValue("--call-foreground").trim()})`,
-            background: `hsl(${getComputedStyle(document.documentElement).getPropertyValue("--call-background").trim()})`,
-            baseText: `hsl(${getComputedStyle(document.documentElement).getPropertyValue("--call-foreground").trim()})`,
-            border: `hsl(${getComputedStyle(document.documentElement).getPropertyValue("--call-border").trim()})`,
-            mainAreaBg: `hsl(${getComputedStyle(document.documentElement).getPropertyValue("--call-background").trim()})`,
-          } },
+          ...dailyPresentation(name => getComputedStyle(document.documentElement).getPropertyValue(name)),
           iframeStyle: {
             position: "absolute",
             inset: "0",
