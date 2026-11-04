@@ -1,4 +1,5 @@
 # Tasks
+- [ ] Verify atomic consultation claiming, improve conflict feedback, and add three named sample patients with searchable journal history.
 - [x] Add automatic completed history and patient journal timeline, persistent authorized clinical notes, security tests, and sample-flow checks.
 - [ ] Verify real doctor journal creation, future-visit timeline reads, and audit readback end-to-end — blocked by no verified doctor account and mock-only login mode. Authenticated patient/anonymous denied-write and denied-read probes pass.
 - [x] Expire/delete rooms through doctor-confirmed ending, reject ended/expired/deleted links, prevent reopening ended visits, and test shutdown/retry behavior.
