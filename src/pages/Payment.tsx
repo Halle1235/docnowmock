@@ -323,7 +323,7 @@ const Payment = () => {
               </div>
 
               </>}
-              <Button type="submit" className="w-full h-12 text-base" size="lg">
+              <Button type="submit" className="w-full h-12 text-base" size="lg" disabled={booking}>
                 {MOCK_LOGIN_ENABLED ? "Simulate payment · AED 249" : t('payment.payButton')}
               </Button>
             </form>
