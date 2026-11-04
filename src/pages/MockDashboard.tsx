@@ -1,6 +1,6 @@
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, LogOut, Shield, Stethoscope, User } from "lucide-react";
+import { CalendarDays, LogOut, Shield, Stethoscope, User, Video } from "lucide-react";
 import { isMockRole } from "@/lib/mock-login";
 
 const views = {
@@ -42,6 +42,11 @@ export default function MockDashboard() {
               <p className="font-semibold">{view.name}</p>
               <p className="text-sm text-muted-foreground">{view.detail}</p>
             </div>
+            {role !== "admin" && (
+              <Button className="ml-auto" onClick={() => navigate(`/demo/call?as=${role}`)}>
+                <Video className="mr-2 h-4 w-4" />{role === "doctor" ? "Start call" : "Join call"}
+              </Button>
+            )}
           </article>
         </section>
         <Button variant="ghost" onClick={() => navigate("/")}>Back to home</Button>
