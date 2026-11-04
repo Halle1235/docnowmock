@@ -8,6 +8,8 @@ import { Loader2, PhoneOff } from "lucide-react";
 import { toast } from "sonner";
 import ClinicalNotesPanel from "@/components/ClinicalNotesPanel";
 import { doctorWorkspace, useDoctorWorkspace } from "@/lib/doctor-workspace";
+import CallChat from "@/components/CallChat";
+import { patientWorkspace } from "@/lib/patient-workspace";
 
 const VideoCall = () => {
   const { consultationId } = useParams<{ consultationId: string }>();
@@ -17,6 +19,7 @@ const VideoCall = () => {
   const joinedUrlRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [waitingForDoctor, setWaitingForDoctor] = useState(false);
+  const [joinedCall, setJoinedCall] = useState<DailyCall | null>(null);
   const [searchParams] = useSearchParams();
   const isDemo = MOCK_LOGIN_ENABLED && consultationId === DEMO_CALL_ID;
   const demoRole: "doctor" | "patient" = searchParams.get("as") === "doctor" ? "doctor" : "patient";
@@ -75,7 +78,16 @@ const VideoCall = () => {
         joinedUrlRef.current = url;
 
         frame.on("left-meeting", () => {
-          if (isDemo && demoRole === "doctor") doctorWorkspace.finishCall(visitId);
+          setJoinedCall(null);
+          if (isDemo && demoRole === "doctor") {
+            doctorWorkspace.finishCall(visitId);
+            const visit = doctorWorkspace.getSnapshot().visits.find(v => v.id === visitId);
+            patientWorkspace.complete("sample-1", visit?.prescriptions, visit?.followUpDate, visit?.followUpReason);
+          }
+          if (isDemo && demoRole === "patient") {
+            const waiting = patientWorkspace.getSnapshot().visits.find(v => v.status === "waiting");
+            if (waiting) patientWorkspace.complete(waiting.id);
+          }
           navigate(isDemo ? mockLoginDestination(demoRole) : "/");
         });
         frame.on("error", (ev: any) => {
@@ -88,6 +100,7 @@ const VideoCall = () => {
             if (isDemo && demoRole === "doctor") doctorWorkspace.startCall(visitId);
             setLoading(false);
             setWaitingForDoctor(false);
+            setJoinedCall(frame);
           }
         });
 
@@ -125,6 +138,7 @@ const VideoCall = () => {
         if (isDemo && demoRole === "doctor") doctorWorkspace.startCall(visitId);
         setLoading(false);
         setWaitingForDoctor(false);
+        setJoinedCall(frame);
       } catch (e: any) {
         console.error("[VideoCall] Daily join error", e);
         toast.error(e?.message || "Could not join the call");
@@ -288,7 +302,7 @@ const VideoCall = () => {
           </div>
         )}
       </main>
-      {sampleVisit && <aside aria-label="In-call clinical notes" className="w-full lg:w-96 border-t lg:border-t-0 lg:border-s border-border lg:max-h-[calc(100vh-65px)] overflow-y-auto"><ClinicalNotesPanel key={sampleVisit.id} visit={sampleVisit} /></aside>}
+      {(sampleVisit || joinedCall) && <aside aria-label="Call tools" className="w-full lg:w-96 border-t lg:border-t-0 lg:border-s border-border lg:max-h-[calc(100vh-65px)] overflow-y-auto">{joinedCall && <CallChat call={joinedCall} sample={isDemo} />}{sampleVisit && <ClinicalNotesPanel key={sampleVisit.id} visit={sampleVisit} />}</aside>}
       </div>
     </div>
   );

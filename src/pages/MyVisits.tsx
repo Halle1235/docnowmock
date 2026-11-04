@@ -8,6 +8,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { FileText, LogOut, Video } from "lucide-react";
 import { MOCK_LOGIN_ENABLED, demoCallPath } from "@/lib/mock-login";
+import PatientWorkspace from "@/components/PatientWorkspace";
 
 interface Visit {
   id: string;
@@ -18,7 +19,7 @@ interface Visit {
   visit_summary_approved_at: string | null;
 }
 
-const MyVisits = () => {
+const LiveMyVisits = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [visits, setVisits] = useState<Visit[]>([]);
@@ -125,4 +126,4 @@ const MyVisits = () => {
   );
 };
 
-export default MyVisits;
+export default function MyVisits() { return MOCK_LOGIN_ENABLED ? <PatientWorkspace /> : <LiveMyVisits />; }

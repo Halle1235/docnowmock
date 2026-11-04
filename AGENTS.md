@@ -1,4 +1,6 @@
 # Architecture rules
+- Patient sample profile, ratings, follow-ups, and visit documents stay in memory; PDF/QR output is explicitly non-clinical and never a real pharmacy verification or insurance claim.
+- Call text uses bounded Daily app messages; file bytes use a size/type-validated direct WebRTC data channel, never public storage, with no persistence and explicit network-failure feedback.
 - Live staff record reads use POST RPCs with transactional auditing; database permissions enforce verified-doctor assignment or admin access, and clinical writes retain caller identity for audit triggers.
 - Original dashboard routes select sample or authenticated content; sample content must never grant privileges, create sessions, persist passwords, or access live patient data.
 - Control temporary mock login behavior through one shared module so real authentication can be restored consistently.

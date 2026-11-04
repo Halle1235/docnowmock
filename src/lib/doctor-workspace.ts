@@ -21,6 +21,8 @@ export interface DoctorVisit {
   startedAt?: number;
   completedAt?: number;
   durationSeconds?: number;
+  followUpDate?: string;
+  followUpReason?: string;
 }
 export const WAIT_ALERT_MINUTES = 5;
 export const MEDICINE_OPTIONS = ["Paracetamol", "Ibuprofen", "Cetirizine", "Oral rehydration salts"];
@@ -86,6 +88,13 @@ export const doctorWorkspace = {
     return true;
   },
   startCall: (id: string, now = Date.now()) => updateVisit(id, v => v.status === "claimed" ? { ...v, status: "in_progress", startedAt: now } : v),
+  saveFollowUp: (id: string, date: string, reason: string) => {
+    const parsed = new Date(`${date}T12:00:00`);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const visit = snapshot.visits.find(v => v.id === id);
+    if (!visit || !["claimed", "in_progress"].includes(visit.status) || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date || parsed < today || !reason.trim() || reason.length > 500) return false;
+    updateVisit(id, v => ({ ...v, followUpDate: date, followUpReason: reason.trim() })); return true;
+  },
   finishCall: (id: string, now = Date.now()) => updateVisit(id, v => v.status === "in_progress" && v.startedAt !== undefined ? { ...v, status: "completed", completedAt: now, durationSeconds: Math.max(0, Math.round((now - v.startedAt) / 1000)) } : v),
 };
 export function useDoctorWorkspace() {
