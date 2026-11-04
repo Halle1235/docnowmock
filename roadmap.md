@@ -1,4 +1,5 @@
 # Tasks
+- [ ] Redesign original waiting room and call screens with camera/mic selectors, truthful status badges, call timer, details drawer, and end-call confirmation; verify at 360px and desktop.
 - [x] Require patient agreement and simulated payment before creating a paid follow-up; verify cancellation, AED 249 payment readback, and duplicate prevention.
 - [x] Add sample queue status, health profile, prescription/receipt downloads, ratings, and follow-up rebooking to original My visits.
 - [x] Add camera/microphone checks and bounded in-call chat/photo/document sharing to original call screen.
