@@ -29,6 +29,13 @@
       "when": 1793762887712,
       "tag": "0003_patient_journal_continuity",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793763081318,
+      "tag": "0004_journal_fail_closed_assignment",
+      "breakpoints": true
     }
   ]
 }
