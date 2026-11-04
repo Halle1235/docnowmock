@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -278,7 +279,7 @@ const LiveDoctorDashboard = () => {
           </div>
 
           <div>
-            <div className="mb-4"><label htmlFor="live-history-search" className="text-sm font-medium">Search patient history</label><input id="live-history-search" className="mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={historySearch} onChange={e => setHistorySearch(e.target.value)} placeholder="Patient name" /></div>
+            <div className="mb-4"><label htmlFor="live-history-search" className="text-sm font-medium">Search patient history</label><Input id="live-history-search" className="mt-2" value={historySearch} onChange={e => setHistorySearch(e.target.value)} placeholder="Patient name" /></div>
             <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-primary" />
               {t('dashboard.myConsultationsTitle')} ({consultations.filter(c => c.status !== 'pending').length})
