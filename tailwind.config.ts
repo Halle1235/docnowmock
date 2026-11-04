@@ -14,6 +14,10 @@ export default {
     },
     extend: {
       colors: {
+        lounge: "hsl(var(--lounge))",
+        preview: "hsl(var(--preview-background))",
+        success: "hsl(var(--success))",
+        call: { DEFAULT: "hsl(var(--call-background))", foreground: "hsl(var(--call-foreground))", border: "hsl(var(--call-border))" },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
