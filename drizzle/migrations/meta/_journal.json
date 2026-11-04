@@ -43,6 +43,13 @@
       "when": 1793765128207,
       "tag": "0005_shared_test_booking_queue",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793765251105,
+      "tag": "0006_test_bookings_revoke_direct_access",
+      "breakpoints": true
     }
   ]
 }
