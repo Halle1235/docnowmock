@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Stethoscope } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { MOCK_LOGIN_ENABLED, mockLoginDestination } from "@/lib/mock-login";
 
 const DoctorLogin = () => {
   const navigate = useNavigate();
@@ -16,6 +17,11 @@ const DoctorLogin = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (MOCK_LOGIN_ENABLED) {
+      setPassword("");
+      navigate(mockLoginDestination("doctor"));
+      return;
+    }
     setLoading(true);
 
     try {
@@ -47,7 +53,7 @@ const DoctorLogin = () => {
         description: "Välkommen tillbaka!",
       });
 
-      navigate("/doctor/dashboard");
+      navigate("/doctor-dashboard");
     } catch (error: any) {
       toast({
         title: "Inloggning misslyckades",
@@ -86,6 +92,7 @@ const DoctorLogin = () => {
           </div>
 
           <div className="bg-card p-8 rounded-xl border shadow-sm">
+            {MOCK_LOGIN_ENABLED && <p className="mb-4 text-sm text-muted-foreground">Demo login · No real account required</p>}
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="email">E-postadress</Label>

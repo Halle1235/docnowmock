@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Shield, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { MOCK_LOGIN_ENABLED, mockLoginDestination } from "@/lib/mock-login";
 
 // Send each signed-in user to the page that fits their role.
 const routeForUser = async (userId: string) => {
@@ -32,6 +33,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
 
   useEffect(() => {
+    if (MOCK_LOGIN_ENABLED) return;
     const go = async (userId: string) => navigate(await routeForUser(userId), { replace: true });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -50,6 +52,11 @@ const Auth = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (MOCK_LOGIN_ENABLED) {
+      setPassword("");
+      navigate(mockLoginDestination(isPatient ? "patient" : "doctor"));
+      return;
+    }
     setLoading(true);
 
     try {
@@ -100,6 +107,7 @@ const Auth = () => {
           </div>
 
           <div className="bg-card p-8 rounded-xl border shadow-sm">
+            {MOCK_LOGIN_ENABLED && <p className="mb-4 text-sm text-muted-foreground">Demo login · No real account required</p>}
             {isPatient && (
               <p className="mb-6 rounded-lg bg-accent/50 p-3 text-sm text-muted-foreground">
                 {t('auth.patientHint')}
@@ -156,6 +164,9 @@ const Auth = () => {
           </div>
 
           <div className="mt-6 flex flex-col items-center gap-2 text-center">
+            {MOCK_LOGIN_ENABLED && !isPatient && (
+              <Button variant="link" onClick={() => navigate(mockLoginDestination("admin"))}>Admin preview</Button>
+            )}
             {!isPatient && (
               <Button
                 variant="link"
