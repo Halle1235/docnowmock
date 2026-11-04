@@ -1,4 +1,6 @@
 # Tasks
+- [ ] Add shared doctor/patient booking alert sounds and verify browser activation, arrival, and acceptance.
+- [ ] Open an editable patient journal after doctor-confirmed call completion; retain completed status and authorized append-only access.
 - [x] Connect mock payment to the fixed fictional doctor queue and show a doctor name only after acceptance; 16 focused tests pass, same-browser two-tab payment/claim/name readback verified without auth or database requests. Actual patient identity and separate-device booking remain unavailable in mock mode.
 - [x] Expand Amina's fictional journal from September 4 to November 4 and add in-app doctor arrival / patient acceptance alerts; 26 focused tests pass in isolated runs, browser verifies cross-tab sample acceptance and 360px layout, latest build OK.
 - [x] Patient's own booking reaches doctors on other devices via the shared test queue (no logins).
