@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Search, ShieldCheck, UserCog, BadgeCheck, UserPlus } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { MOCK_LOGIN_ENABLED } from "@/lib/mock-login";
 
 type AppRole = "patient" | "doctor" | "admin";
 const ALL_ROLES: AppRole[] = ["patient", "doctor", "admin"];
@@ -45,6 +46,18 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const verifyAdmin = async () => {
+      if (MOCK_LOGIN_ENABLED) {
+        // Demo: sample data only, nothing is read from or written to real records.
+        setProfiles([
+          { id: "s-doc", full_name: "Dr. Alex Morgan", email: "alex.morgan@example.com", phone: null },
+          { id: "s-pat", full_name: "Sample patient", email: "patient@example.com", phone: "+971 50 000 0000" },
+        ]);
+        setRoles([{ user_id: "s-doc", role: "doctor" }, { user_id: "s-pat", role: "patient" }]);
+        setDoctorProfiles([{ id: "s-dp", user_id: "s-doc", license_number: "DHA-00000", specialization: "General medicine", is_verified: true }]);
+        setChecking(false);
+        setLoading(false);
+        return;
+      }
       const { data: sessionData } = await supabase.auth.getSession();
       const user = sessionData.session?.user;
 
@@ -107,6 +120,10 @@ const AdminDashboard = () => {
 
   const toggleRole = async (userId: string, role: AppRole, hasRole: boolean) => {
     const key = `${userId}-${role}`;
+    if (MOCK_LOGIN_ENABLED) {
+      setRoles((rs) => hasRole ? rs.filter((r) => !(r.user_id === userId && r.role === role)) : [...rs, { user_id: userId, role }]);
+      return;
+    }
     setBusyKey(key);
 
     const { error } = hasRole
@@ -150,6 +167,16 @@ const AdminDashboard = () => {
 
   const createDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (MOCK_LOGIN_ENABLED) {
+      // Demo: new doctors are approved automatically and kept only on this screen.
+      const id = `s-${Date.now()}`;
+      setProfiles((ps) => [...ps, { id, full_name: newDoctor.full_name, email: newDoctor.email, phone: null }]);
+      setRoles((rs) => [...rs, { user_id: id, role: "doctor" }]);
+      setDoctorProfiles((ds) => [...ds, { id: `${id}-dp`, user_id: id, license_number: newDoctor.license_number, specialization: newDoctor.specialization, is_verified: true }]);
+      toast({ title: "Doctor added (demo)", description: "Approved automatically. Sample only, no real account was created." });
+      setNewDoctor(emptyDoctor);
+      return;
+    }
     setCreating(true);
     const { data, error } = await supabase.functions.invoke("admin-create-doctor", { body: newDoctor });
     setCreating(false);
