@@ -1,0 +1,208 @@
+{
+  "header": {
+    "brand": "DocNow",
+    "doctorPortal": "بوابة الأطباء",
+    "login": "تسجيل الدخول",
+    "patientLogin": "أنا مريض",
+    "doctorLogin": "أنا طبيب",
+    "logout": "تسجيل الخروج",
+    "doctors": "أطباء DocNow"
+  },
+  "hero": {
+    "title": "قابل الأطباء مباشرة عبر الفيديو",
+    "subtitle": "المواعيد الطبية عندما تناسبك. بدون أوقات انتظار، رعاية آمنة ومضمونة فقط.",
+    "bookButton": "احجز موعد فيديو – 249 درهم",
+    "waitTime": "متوسط وقت الانتظار: 5 دقائق"
+  },
+  "features": {
+    "videoConsultation": {
+      "title": "استشارة فيديو",
+      "description": "قابل أطباء مرخصين عبر رابط فيديو آمن، أينما كنت."
+    },
+    "licensedDoctors": {
+      "title": "أطباء مرخصون",
+      "description": "جميع أطبائنا مرخصون وذوو خبرة في تخصصاتهم."
+    },
+    "quickAccess": {
+      "title": "وصول سريع",
+      "description": "احصل على الرعاية في دقائق ووصفات طبية رقمية مباشرة في التطبيق."
+    }
+  },
+  "howItWorks": {
+    "title": "كيف يعمل",
+    "step1": {
+      "title": "سجل",
+      "description": "تحقق من هويتك بشكل آمن برقم جواز سفرك"
+    },
+    "step2": {
+      "title": "ادفع لموعدك",
+      "description": "دفع آمن – 249 درهم لكل استشارة فيديو"
+    },
+    "step3": {
+      "title": "قابل الطبيب",
+      "description": "اتصل عبر الفيديو واحصل على وصفة طبية رقمية مباشرة بعد الموعد"
+    },
+    "security": {
+      "title": "رعاية آمنة وفقًا لأعلى المعايير",
+      "description": "نتبع جميع قواعد الأمان والخصوصية. معلوماتك مشفرة وآمنة."
+    },
+    "getStarted": "ابدأ الآن"
+  },
+  "footer": {
+    "copyright": "© 2025 DocNow. جميع الحقوق محفوظة.",
+    "tagline": "أطباء مرخصون • فيديو آمن • رعاية رقمية"
+  },
+  "auth": {
+    "title": "بوابة الأطباء",
+    "subtitle": "سجل الدخول لعرض وإدارة استشاراتك",
+    "patientTitle": "تسجيل دخول المريض",
+    "patientSubtitle": "سجل الدخول لعرض زياراتك وملخصاتها",
+    "patientHint": "أول مرة تسجل الدخول؟ استخدم البريد الإلكتروني الذي حجزت به واضغط على \"نسيت كلمة المرور؟\" لتعيين كلمة المرور.",
+    "switchToDoctor": "هل أنت طبيب؟ سجل الدخول هنا",
+    "switchToPatient": "هل أنت مريض؟ سجل الدخول هنا",
+    "loginTab": "تسجيل الدخول",
+    "signupTab": "تسجيل",
+    "email": "البريد الإلكتروني",
+    "emailPlaceholder": "بريدك@الإلكتروني.com",
+    "password": "كلمة المرور",
+    "passwordPlaceholder": "••••••••",
+    "passwordMinLength": "6 أحرف على الأقل",
+    "loginButton": "تسجيل الدخول",
+    "loggingIn": "جاري تسجيل الدخول...",
+    "createAccount": "إنشاء حساب طبيب",
+    "creatingAccount": "جاري إنشاء الحساب...",
+    "backToHome": "العودة إلى الصفحة الرئيسية",
+    "welcomeBack": "مرحبًا بعودتك!",
+    "loggedIn": "تم تسجيل دخولك الآن",
+    "loginFailed": "فشل تسجيل الدخول",
+    "accountCreated": "تم إنشاء الحساب!",
+    "canLogin": "يمكنك الآن تسجيل الدخول",
+    "registrationFailed": "فشل التسجيل"
+  },
+  "dashboard": {
+    "title": "استشاراتك",
+    "subtitle": "إدارة الاستشارات الواردة والجارية عبر الفيديو",
+    "pendingTitle": "الاستشارات المعلقة",
+    "myConsultationsTitle": "استشاراتي",
+    "noPending": "لا توجد استشارات معلقة الآن",
+    "noAssigned": "لا توجد استشارات معينة بعد",
+    "patient": "المريض",
+    "phone": "الهاتف",
+    "notProvided": "غير مقدم",
+    "payment": "الدفع",
+    "status": "الحالة",
+    "created": "تم الإنشاء",
+    "reason": "سبب الزيارة",
+    "symptoms": "الأعراض",
+    "takeConsultation": "قبول الاستشارة",
+    "assigning": "جاري التعيين...",
+    "startVideo": "بدء الفيديو",
+    "consultationAssigned": "تم تعيين الاستشارة",
+    "canStartVideo": "يمكنك الآن بدء مكالمة الفيديو",
+    "couldNotAssign": "تعذر تعيين الاستشارة",
+    "startingVideo": "جاري بدء مكالمة الفيديو",
+    "videoComingSoon": "وظيفة الفيديو قريبًا",
+    "couldNotLoad": "تعذر تحميل الاستشارات",
+    "loading": "جاري التحميل..."
+  },
+  "registration": {
+    "title": "التحقق من الهوية",
+    "subtitle": "لضمان سلامتك، نحتاج إلى التحقق من هويتك",
+    "fullName": "الاسم الكامل",
+    "fullNamePlaceholder": "الاسم الأول والأخير",
+    "personalNumber": "الرقم الشخصي",
+    "personalNumberPlaceholder": "YYYYMMDD-XXXX",
+    "passportNumber": "رقم جواز السفر",
+    "passportPlaceholder": "أدخل رقم جواز سفرك",
+    "passportHelper": "نستخدم هذا للتحقق الآمن من الهوية",
+    "email": "البريد الإلكتروني",
+    "emailPlaceholder": "بريدك@الإلكتروني.com",
+    "phone": "رقم الهاتف المحمول",
+    "phonePlaceholder": "07X XXX XX XX",
+    "securityNote": "تتم معالجة معلوماتك بشكل آمن وفقًا لـ GDPR وتخزينها مشفرة",
+    "continueButton": "متابعة إلى الدفع",
+    "termsNote": "بالمتابعة فإنك توافق على شروط الخدمة الخاصة بنا",
+    "fillAllFields": "يرجى ملء جميع الحقول",
+    "allInfoRequired": "جميع المعلومات مطلوبة للتحقق من هويتك",
+    "verificationComplete": "اكتمل التحقق",
+    "proceedingToPayment": "المتابعة إلى الدفع"
+  },
+  "medicalReason": {
+    "title": "ما نوع المساعدة التي تحتاجها؟",
+    "subtitle": "اختر الفئة التي تصف مشكلتك بشكل أفضل",
+    "categories": {
+      "skin": "الأمراض الجلدية",
+      "respiratory": "نزلات البرد والإنفلونزا والجهاز التنفسي",
+      "digestive": "مشاكل المعدة والجهاز الهضمي",
+      "mental": "الصحة النفسية",
+      "urinary": "مشاكل المسالك البولية",
+      "pain": "الألم والإصابات",
+      "allergies": "الحساسية",
+      "sexual": "الصحة الجنسية",
+      "womens": "صحة المرأة",
+      "children": "صحة الأطفال",
+      "general": "استشارة عامة"
+    },
+    "descriptionLabel": "صف أعراضك",
+    "descriptionPlaceholder": "يرجى وصف الأعراض، متى بدأت، وأي تفاصيل ذات صلة...",
+    "continueButton": "المتابعة إلى الدفع",
+    "selectCategory": "يرجى اختيار فئة",
+    "provideDescription": "يرجى وصف الأعراض",
+    "emergencyTitle": "هل هذه حالة طارئة؟",
+    "emergencyText": "الاستشارات عن بُعد ليست للحالات الطارئة. إذا كنت تعاني من ألم في الصدر أو صعوبة في التنفس أو نزيف شديد أو علامات سكتة دماغية أو أفكار لإيذاء النفس أو أي مشكلة عاجلة، اتصل بالرقم 998 (الإسعاف) أو 999 فوراً أو توجه إلى أقرب قسم طوارئ.",
+    "ackEmergency": "أؤكد أن هذه ليست حالة طارئة وأفهم أن الطبيب قد يحيلني إلى رعاية حضورية أو طارئة.",
+    "ackTelehealth": "أوافق على استشارة عن بُعد بالفيديو مع طبيب مرخص من هيئة الصحة بدبي وأفهم حدودها (لا يوجد فحص جسدي؛ ولا يمكن وصف الأدوية المخدرة أو الخاضعة للرقابة عن بُعد).",
+    "ackPrivacy": "أوافق على قيام DocNow بمعالجة وتخزين معلوماتي الشخصية والصحية لتقديم هذه الاستشارة وتسجيلها في ملفي الطبي.",
+    "consentRequired": "يرجى تأكيد العبارات الثلاث للمتابعة."
+  },
+  "payment": {
+    "title": "ادفع لموعدك",
+    "subtitle": "دفع آمن مع اتصال مشفر",
+    "consultationLabel": "استشارة فيديو",
+    "price": "249 درهم",
+    "includesReceipt": "يشمل الوصفة الطبية إذا لزم الأمر",
+    "cardHolder": "حامل البطاقة",
+    "cardHolderPlaceholder": "الاسم الأول والأخير",
+    "cardNumber": "رقم البطاقة",
+    "cardNumberPlaceholder": "1234 5678 9012 3456",
+    "expiryDate": "تاريخ الانتهاء",
+    "expiryPlaceholder": "MM/YY",
+    "cvv": "CVV",
+    "cvvPlaceholder": "123",
+    "securityNote": "دفعك مشفر وآمن. نحن لا نخزن تفاصيل بطاقتك أبدًا. تتم معالجة الدفع بواسطة خدمة الدفع المعتمدة لدينا.",
+    "payButton": "ادفع 249 درهم",
+    "securePayment": "🔒 دفع آمن مع تشفير SSL",
+    "chargeNote": "يتم خصم الأموال فقط بعد مقابلة الطبيب",
+    "fillAllFields": "يرجى ملء جميع تفاصيل البطاقة",
+    "allInfoRequired": "جميع المعلومات مطلوبة لإتمام الدفع",
+    "paymentComplete": "اكتمل الدفع",
+    "appointmentBooked": "تم حجز موعد الفيديو الخاص بك الآن"
+  },
+  "waitingRoom": {
+    "title": "في انتظار الطبيب",
+    "subtitle": "يرجى الانتظار بينما نربطك بطبيب متاح",
+    "estimatedWait": "وقت الانتظار المقدر",
+    "upTo15Min": "حتى 15 دقيقة",
+    "currentStatus": "الحالة الحالية",
+    "lookingForDoctor": "البحث عن طبيب متاح...",
+    "doctorAssigned": "تم تعيين الطبيب!",
+    "doctorAccepted": "قبل استشارتك",
+    "preparing": "جاري تحضير استشارة الفيديو الخاصة بك...",
+    "yourReason": "سبب زيارتك",
+    "yourSymptoms": "أعراضك",
+    "consultationDetails": "تفاصيل الاستشارة",
+    "paymentConfirmed": "تم تأكيد الدفع",
+    "amount": "المبلغ",
+    "waitingInQueue": "أنت في قائمة الانتظار",
+    "doctorWillJoin": "سينضم طبيبك قريبًا"
+  },
+  "status": {
+    "pending": "معلق",
+    "claimed": "معين",
+    "in_progress": "قيد التنفيذ",
+    "completed": "مكتمل",
+    "cancelled": "ملغى",
+    "paid": "مدفوع",
+    "unpaid": "غير مدفوع"
+  }
+}

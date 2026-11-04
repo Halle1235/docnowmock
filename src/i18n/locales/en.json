@@ -1,0 +1,206 @@
+{
+  "header": {
+    "brand": "DocNow",
+    "doctorPortal": "Doctor Portal",
+    "login": "Login",
+    "patientLogin": "I'm a patient",
+    "doctorLogin": "I'm a doctor",
+    "logout": "Logout",
+    "doctors": "DocNow Doctors"
+  },
+  "hero": {
+    "title": "Meet doctors directly via video",
+    "subtitle": "Medical appointments when it suits you. No waiting times, just safe and secure care.",
+    "bookButton": "Book video appointment – 249 AED",
+    "waitTime": "Average wait time: 5 minutes"
+  },
+  "features": {
+    "videoConsultation": {
+      "title": "Video Consultation",
+      "description": "Meet licensed doctors via secure video link, wherever you are."
+    },
+    "licensedDoctors": {
+      "title": "Licensed Doctors",
+      "description": "All our doctors are licensed and experienced in their specialty."
+    },
+    "quickAccess": {
+      "title": "Quick Access",
+      "description": "Get care within minutes and digital prescriptions directly in the app."
+    }
+  },
+  "howItWorks": {
+    "title": "How it works",
+    "step1": {
+      "title": "Register",
+      "description": "Verify your identity securely with your passport number"
+    },
+    "step2": {
+      "title": "Pay for your appointment",
+      "description": "Secure payment – 249 AED per video consultation"
+    },
+    "step3": {
+      "title": "Meet the doctor",
+      "description": "Connect via video and get a prescription digitally right after the appointment"
+    },
+    "security": {
+      "title": "Safe care according to the highest standards",
+      "description": "We follow all security and privacy rules. Your information is encrypted and secure."
+    },
+    "getStarted": "Get started now"
+  },
+  "footer": {
+    "copyright": "© 2025 DocNow. All rights reserved.",
+    "tagline": "Licensed doctors • Secure video • Digital care"
+  },
+  "auth": {
+    "title": "Doctor Portal",
+    "subtitle": "Log in to view and manage your consultations",
+    "patientTitle": "Patient login",
+    "patientSubtitle": "Log in to see your visits and visit summaries",
+    "patientHint": "First time logging in? Use the email you booked with and click \"Forgot password?\" to set your password.",
+    "switchToDoctor": "Are you a doctor? Log in here",
+    "switchToPatient": "Are you a patient? Log in here",
+    "loginTab": "Login",
+    "signupTab": "Register",
+    "email": "Email address",
+    "emailPlaceholder": "your@email.com",
+    "password": "Password",
+    "passwordPlaceholder": "••••••••",
+    "passwordMinLength": "At least 6 characters",
+    "loginButton": "Login",
+    "loggingIn": "Logging in...",
+    "createAccount": "Create doctor account",
+    "creatingAccount": "Creating account...",
+    "backToHome": "Back to homepage",
+    "welcomeBack": "Welcome back!",
+    "loggedIn": "You are now logged in",
+    "loginFailed": "Login failed",
+    "accountCreated": "Account created!",
+    "canLogin": "You can now log in",
+    "registrationFailed": "Registration failed"
+  },
+  "dashboard": {
+    "title": "Your consultations",
+    "subtitle": "Manage incoming and ongoing video consultations",
+    "pendingTitle": "Pending consultations",
+    "myConsultationsTitle": "My consultations",
+    "noPending": "No pending consultations right now",
+    "noAssigned": "No assigned consultations yet",
+    "patient": "Patient",
+    "phone": "Phone",
+    "notProvided": "Not provided",
+    "payment": "Payment",
+    "status": "Status",
+    "created": "Created",
+    "takeConsultation": "Take consultation",
+    "assigning": "Assigning...",
+    "startVideo": "Start video",
+    "consultationAssigned": "Consultation assigned",
+    "canStartVideo": "You can now start the video call",
+    "couldNotAssign": "Could not assign consultation",
+    "startingVideo": "Starting video call",
+    "videoComingSoon": "Video functionality coming soon",
+    "couldNotLoad": "Could not load consultations",
+    "loading": "Loading..."
+  },
+  "registration": {
+    "title": "Identity Verification",
+    "subtitle": "To ensure your safety, we need to verify your identity",
+    "fullName": "Full name",
+    "fullNamePlaceholder": "First and last name",
+    "personalNumber": "Personal number",
+    "personalNumberPlaceholder": "YYYYMMDD-XXXX",
+    "passportNumber": "Passport number",
+    "passportPlaceholder": "Enter your passport number",
+    "passportHelper": "We use this for secure identity verification",
+    "email": "Email address",
+    "emailPlaceholder": "your@email.com",
+    "phone": "Mobile number",
+    "phonePlaceholder": "07X XXX XX XX",
+    "securityNote": "Your information is processed securely according to GDPR and stored encrypted",
+    "continueButton": "Continue to payment",
+    "termsNote": "By continuing you agree to our terms of service",
+    "fillAllFields": "Please fill in all fields",
+    "allInfoRequired": "All information is required to verify your identity",
+    "verificationComplete": "Verification complete",
+    "proceedingToPayment": "Proceeding to payment"
+  },
+  "medicalReason": {
+    "title": "What do you need help with?",
+    "subtitle": "Select the category that best describes your concern",
+    "categories": {
+      "skin": "Skin conditions",
+      "respiratory": "Cold, flu & respiratory",
+      "digestive": "Stomach & digestive issues",
+      "mental": "Mental health",
+      "urinary": "Urinary tract issues",
+      "pain": "Pain & injuries",
+      "allergies": "Allergies",
+      "sexual": "Sexual health",
+      "womens": "Women's health",
+      "children": "Children's health",
+      "general": "General consultation"
+    },
+    "descriptionLabel": "Describe your symptoms",
+    "descriptionPlaceholder": "Please describe your symptoms, when they started, and any relevant details...",
+    "continueButton": "Continue to payment",
+    "selectCategory": "Please select a category",
+    "provideDescription": "Please describe your symptoms",
+    "emergencyTitle": "Is this an emergency?",
+    "emergencyText": "Online consultations are not for emergencies. If you have chest pain, difficulty breathing, severe bleeding, signs of stroke, thoughts of self-harm or another urgent problem, call 998 (Ambulance) or 999 now, or go to the nearest emergency department.",
+    "ackEmergency": "I confirm this is not an emergency and I understand the doctor may refer me to in-person or emergency care.",
+    "ackTelehealth": "I consent to a remote video consultation with a DHA-licensed doctor and understand its limitations (no physical examination; narcotic and controlled medicines cannot be prescribed online).",
+    "ackPrivacy": "I consent to DocNow processing and storing my personal and health information to provide this consultation, and to it being recorded in my medical record.",
+    "consentRequired": "Please confirm all three statements to continue."
+  },
+  "payment": {
+    "title": "Pay for your appointment",
+    "subtitle": "Secure payment with encrypted connection",
+    "consultationLabel": "Video consultation",
+    "price": "249 AED",
+    "includesReceipt": "Includes prescription if needed",
+    "cardHolder": "Cardholder",
+    "cardHolderPlaceholder": "First and last name",
+    "cardNumber": "Card number",
+    "cardNumberPlaceholder": "1234 5678 9012 3456",
+    "expiryDate": "Expiry date",
+    "expiryPlaceholder": "MM/YY",
+    "cvv": "CVV",
+    "cvvPlaceholder": "123",
+    "securityNote": "Your payment is encrypted and secure. We never store your card details. Payment is handled by our certified payment service.",
+    "payButton": "Pay 249 AED",
+    "securePayment": "🔒 Secure payment with SSL encryption",
+    "chargeNote": "Money is only charged after you have met the doctor",
+    "fillAllFields": "Please fill in all card details",
+    "allInfoRequired": "All information is required to complete the payment",
+    "paymentComplete": "Payment completed",
+    "appointmentBooked": "Your video appointment is now booked"
+  },
+  "waitingRoom": {
+    "title": "Waiting for doctor",
+    "subtitle": "Please wait while we connect you with an available doctor",
+    "estimatedWait": "Estimated wait time",
+    "upTo15Min": "Up to 15 minutes",
+    "currentStatus": "Current status",
+    "lookingForDoctor": "Looking for an available doctor...",
+    "doctorAssigned": "Doctor assigned!",
+    "doctorAccepted": "has accepted your consultation",
+    "preparing": "Preparing your video consultation...",
+    "yourReason": "Your reason for visit",
+    "yourSymptoms": "Your symptoms",
+    "consultationDetails": "Consultation details",
+    "paymentConfirmed": "Payment confirmed",
+    "amount": "Amount",
+    "waitingInQueue": "You are in the queue",
+    "doctorWillJoin": "Your doctor will join shortly"
+  },
+  "status": {
+    "pending": "Pending",
+    "claimed": "Assigned",
+    "in_progress": "In progress",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "paid": "Paid",
+    "unpaid": "Unpaid"
+  }
+}

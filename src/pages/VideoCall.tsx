@@ -1,0 +1,247 @@
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import DailyIframe, { DailyCall } from "@daily-co/daily-js";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Loader2, PhoneOff } from "lucide-react";
+import { toast } from "sonner";
+
+const VideoCall = () => {
+  const { consultationId } = useParams<{ consultationId: string }>();
+  const navigate = useNavigate();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const callRef = useRef<DailyCall | null>(null);
+  const joinedUrlRef = useRef<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [waitingForDoctor, setWaitingForDoctor] = useState(false);
+
+  useEffect(() => {
+    if (!consultationId) {
+      navigate("/");
+      return;
+    }
+
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const ensureNoExistingInstance = async () => {
+      try {
+        const existing = (DailyIframe as any).getCallInstance?.();
+        if (existing) {
+          try { await existing.leave(); } catch {}
+          try { await existing.destroy(); } catch {}
+        }
+      } catch (e) {
+        console.warn("ensureNoExistingInstance", e);
+      }
+    };
+
+    let meetingToken: string | undefined;
+    const join = async (url: string) => {
+      if (cancelled) return;
+      if (!containerRef.current) return;
+      if (joinedUrlRef.current === url && callRef.current) return;
+
+      // Always clean up any previous instance before creating a new one
+      await ensureNoExistingInstance();
+      if (callRef.current) {
+        try { await callRef.current.destroy(); } catch {}
+        callRef.current = null;
+      }
+      if (cancelled) return;
+
+      try {
+        console.log("[VideoCall] Creating Daily frame for", url);
+        const frame = DailyIframe.createFrame(containerRef.current, {
+          showLeaveButton: false,
+          iframeStyle: {
+            position: "absolute",
+            inset: "0",
+            width: "100%",
+            height: "100%",
+            border: "0",
+          },
+        });
+        callRef.current = frame;
+        joinedUrlRef.current = url;
+
+        frame.on("left-meeting", () => {
+          navigate("/");
+        });
+        frame.on("error", (ev: any) => {
+          console.error("[VideoCall] Daily error event", ev);
+          toast.error(ev?.errorMsg || "Call error");
+        });
+        frame.on("joined-meeting", () => {
+          console.log("[VideoCall] joined-meeting");
+          if (!cancelled) {
+            setLoading(false);
+            setWaitingForDoctor(false);
+          }
+        });
+
+        const { data: { session } } = await supabase.auth.getSession();
+        const { data: profile } = session
+          ? await supabase
+              .from("profiles")
+              .select("full_name")
+              .eq("id", session.user.id)
+              .maybeSingle()
+          : { data: null };
+
+        if (cancelled) {
+          try { await frame.destroy(); } catch {}
+          callRef.current = null;
+          joinedUrlRef.current = null;
+          return;
+        }
+
+        console.log("[VideoCall] Joining Daily room…");
+        await frame.join({
+          url,
+          token: meetingToken,
+          userName: profile?.full_name || "Participant",
+        });
+        console.log("[VideoCall] join() resolved");
+
+        if (cancelled) {
+          try { await frame.destroy(); } catch {}
+          callRef.current = null;
+          joinedUrlRef.current = null;
+          return;
+        }
+        // Fallback in case 'joined-meeting' didn't fire yet
+        setLoading(false);
+        setWaitingForDoctor(false);
+      } catch (e: any) {
+        console.error("[VideoCall] Daily join error", e);
+        toast.error(e?.message || "Could not join the call");
+        if (callRef.current) {
+          try { await callRef.current.destroy(); } catch {}
+          callRef.current = null;
+          joinedUrlRef.current = null;
+        }
+      }
+    };
+
+    const tryStart = async () => {
+      try {
+        console.log("[VideoCall] Invoking create-daily-room for", consultationId);
+        const { data, error } = await supabase.functions.invoke("create-daily-room", {
+          body: { consultationId },
+        });
+
+        if (cancelled) return;
+
+        if (error) {
+          const ctx: any = (error as any).context;
+          const status = ctx?.status;
+          if (status === 409) {
+            setWaitingForDoctor(true);
+            setLoading(false);
+            return;
+          }
+          let bodyText = "";
+          try { bodyText = await ctx?.text?.(); } catch {}
+          console.error("[VideoCall] Edge function error", status, bodyText, error);
+          throw new Error(bodyText || error.message || "Edge function failed");
+        }
+
+        if (data?.url) {
+          meetingToken = data.token;
+          await join(data.url);
+        } else {
+          throw new Error("No room URL returned");
+        }
+      } catch (e: any) {
+        if (cancelled) return;
+        console.error("[VideoCall] tryStart error", e);
+        toast.error(e?.message || "Could not start the call");
+        setLoading(false);
+      }
+    };
+
+    tryStart();
+
+    channel = supabase
+      .channel(`videocall-${consultationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "consultations",
+          filter: `id=eq.${consultationId}`,
+        },
+        (payload) => {
+          const url = (payload.new as any)?.room_url;
+          console.log("[VideoCall] Realtime update; room_url=", url);
+          // Private rooms need a personal token, so fetch it via the function
+          if (url && joinedUrlRef.current !== url) {
+            tryStart();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
+      if (callRef.current) {
+        try { callRef.current.destroy(); } catch {}
+        callRef.current = null;
+        joinedUrlRef.current = null;
+      }
+    };
+  }, [consultationId, navigate]);
+
+  const leave = async () => {
+    if (callRef.current) {
+      try { await callRef.current.leave(); } catch {}
+      try { callRef.current.destroy(); } catch {}
+      callRef.current = null;
+    }
+    navigate(-1);
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="border-b bg-card">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+          <h1 className="text-lg font-semibold">Video consultation</h1>
+          <Button variant="destructive" size="sm" onClick={leave}>
+            <PhoneOff className="h-4 w-4 mr-2" />
+            End call
+          </Button>
+        </div>
+      </header>
+
+      <main className="flex-1 relative bg-black">
+        <div ref={containerRef} className="absolute inset-0" />
+
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+            <div className="text-center space-y-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+              <p className="text-muted-foreground">Connecting…</p>
+            </div>
+          </div>
+        )}
+
+        {!loading && waitingForDoctor && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background">
+            <div className="text-center space-y-3 max-w-sm px-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+              <h2 className="text-xl font-semibold">Waiting for the doctor</h2>
+              <p className="text-muted-foreground text-sm">
+                The call will start automatically as soon as your doctor is ready.
+              </p>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default VideoCall;
