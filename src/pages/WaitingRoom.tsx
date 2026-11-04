@@ -10,6 +10,7 @@ import { DEMO_CALL_ID, MOCK_LOGIN_ENABLED, demoCallPath } from "@/lib/mock-login
 import { usePatientWorkspace } from "@/lib/patient-workspace";
 import BookingNotifications from "@/components/BookingNotifications";
 import { useBookingNotifications } from "@/hooks/use-booking-notifications";
+import { useSampleBooking } from "@/lib/sample-booking";
 
 interface ConsultationData { id: string; status: string; room_url?: string | null; reason_description?: string | null }
 interface DoctorInfo { full_name: string; avatar_url?: string; specialization?: string; is_verified?: boolean }
@@ -18,6 +19,7 @@ const WaitingRoom = () => {
   const navigate = useNavigate(); const [params] = useSearchParams();
   const id = params.get("id"); const isSample = MOCK_LOGIN_ENABLED;
   const workspace = usePatientWorkspace();
+  const sampleStatus = useSampleBooking();
   const visit = workspace.visits.find(v => v.id === params.get("visit") && v.status === "waiting") || workspace.visits.find(v => v.status === "waiting");
   const [consultation, setConsultation] = useState<ConsultationData | null>(null);
   const [queue, setQueue] = useState<QueueData | null>(null);
@@ -54,8 +56,8 @@ const WaitingRoom = () => {
     const channel = !isSample && id ? supabase.channel(`waiting-${id}-${crypto.randomUUID()}`).on("postgres_changes", { event: "UPDATE", schema: "public", table: "consultations", filter: `id=eq.${id}` }, () => { void load(); }).subscribe() : null;
     return () => { active = false; clearInterval(timer); if (channel) void supabase.removeChannel(channel); };
   }, [id, isSample, navigate]);
-  const doctor = isSample ? { full_name: visit?.doctor || "Your doctor", specialization: "General practitioner" } : queue?.doctor;
-  const canJoin = ready && (isSample ? !!visit : !!consultation);
+  const doctor: DoctorInfo | undefined = isSample ? sampleStatus === "claimed" ? { full_name: "Dr. Alex Morgan", specialization: "General practitioner" } : undefined : queue?.doctor;
+  const canJoin = ready && (isSample ? !!visit && sampleStatus === "claimed" : !!consultation);
   const wait = ready ? "Ready now" : isSample ? "~3 mins" : queue ? queue.estimated_minutes < 3 ? "< 3 mins" : `~${queue.estimated_minutes} mins` : "—";
   return <div className="min-h-screen bg-lounge">
     <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur"><div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-6"><div className="flex items-center gap-2 text-primary"><HeartPulse className="h-7 w-7" /><span className="text-xl font-bold">DocNow</span><span className="ms-3 hidden items-center gap-1 border-s ps-4 text-xs text-muted-foreground md:flex"><ShieldCheck className="h-4 w-4" />{isSample ? "Sample consultation" : "Patient consultation"}</span></div><nav className="flex items-center gap-1"><BookingNotifications role="patient" /><Button variant="ghost" size="sm" onClick={() => navigate("/my-visits")}>My visits</Button><LanguageSwitcher /></nav></div></header>
