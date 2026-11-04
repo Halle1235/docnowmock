@@ -15,8 +15,6 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import MyVisits from "./pages/MyVisits";
-import MockDashboard from "./pages/MockDashboard";
-import DemoCall from "./pages/DemoCall";
 import DoctorLogin from "./pages/DoctorLogin";
 
 const queryClient = new QueryClient();
@@ -35,8 +33,6 @@ const App = () => (
           <Route path="/waiting-room" element={<WaitingRoom />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/doctor/login" element={<DoctorLogin />} />
-          <Route path="/demo/call" element={<DemoCall />} />
-          <Route path="/demo/:role" element={<MockDashboard />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
           <Route path="/call/:consultationId" element={<VideoCall />} />
