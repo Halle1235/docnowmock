@@ -8,6 +8,7 @@ import { HeartPulse, Info, Loader2, PhoneOff, Stethoscope } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import PatientJournal from "@/components/PatientJournal";
 import ClinicalNotesPanel from "@/components/ClinicalNotesPanel";
 import { doctorWorkspace, useDoctorWorkspace } from "@/lib/doctor-workspace";
 import CallChat from "@/components/CallChat";
@@ -105,13 +106,13 @@ const VideoCall = () => {
           if (isDemo && demoRole === "doctor") {
             doctorWorkspace.finishCall(visitId);
             const visit = doctorWorkspace.getSnapshot().visits.find(v => v.id === visitId);
-            patientWorkspace.complete("sample-1", visit?.prescriptions, visit?.followUpDate, visit?.followUpReason);
+            patientWorkspace.complete(visitId, visit?.prescriptions, visit?.followUpDate, visit?.followUpReason);
           }
           if (isDemo && demoRole === "patient") {
             const waiting = patientWorkspace.getSnapshot().visits.find(v => v.status === "waiting");
             if (waiting) patientWorkspace.complete(waiting.id);
           }
-          navigate(isDemo ? mockLoginDestination(demoRole) : "/");
+          navigate(isDemo ? mockLoginDestination(demoRole) : "/doctor-dashboard");
         });
         frame.on("error", (ev: any) => {
           console.error("[VideoCall] Daily error event", ev);
@@ -296,13 +297,17 @@ const VideoCall = () => {
       setEnding(false);
       if (error) { toast.error("Room closure could not be confirmed. Please retry ending the consultation."); return; }
     }
-    if (isDemo && demoRole === "doctor") doctorWorkspace.finishCall(visitId);
+    if (isDemo && demoRole === "doctor") {
+      doctorWorkspace.finishCall(visitId);
+      const visit = doctorWorkspace.getSnapshot().visits.find(v => v.id === visitId);
+      patientWorkspace.complete(visitId, visit?.prescriptions, visit?.followUpDate, visit?.followUpReason);
+    }
     if (callRef.current) {
       try { await callRef.current.leave(); } catch {}
       try { callRef.current.destroy(); } catch {}
       callRef.current = null;
     }
-    navigate(isDemo ? mockLoginDestination(demoRole) : "/my-visits");
+    navigate(isDemo ? mockLoginDestination(demoRole) : liveDoctor ? "/doctor-dashboard" : "/my-visits");
   };
 
   return <div className="h-[100dvh] min-h-0 bg-call flex flex-col">
@@ -320,7 +325,7 @@ const VideoCall = () => {
       {!loading && callError && <div className="absolute inset-0 flex items-center justify-center bg-lounge"><div className="space-y-4 px-5 text-center"><h2 className="text-xl font-semibold">Unable to connect</h2><p className="text-sm text-muted-foreground">Check your connection and return to try again.</p><Button variant="outline" onClick={() => navigate(isDemo && demoRole === "doctor" ? "/doctor-dashboard" : `/waiting-room?id=${consultationId}&visit=${visitId}`)}>Return and try again</Button></div></div>}
       {!loading && waitingForDoctor && <div className="absolute inset-0 flex items-center justify-center bg-lounge"><div className="text-center space-y-4 max-w-sm px-5"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent text-primary"><Stethoscope className="h-8 w-8" /></div><h2 className="text-xl font-semibold">Doctor is preparing the room</h2><p className="text-muted-foreground text-sm">Your consultation will connect as soon as your doctor is ready.</p><Button variant="outline" onClick={() => navigate(`/waiting-room?id=${isDemo ? DEMO_CALL_ID : consultationId}&visit=${visitId}`)}>Return to device check</Button></div></div>}
     </main>
-    <Sheet modal={false} open={detailsOpen} onOpenChange={setDetailsOpen}><SheetContent forceMount className="w-[85vw] sm:w-96 max-w-[85vw] overflow-y-auto data-[state=closed]:hidden" aria-describedby="consultation-details-description"><SheetHeader className="text-start"><SheetTitle>Consultation details</SheetTitle><SheetDescription id="consultation-details-description">{isDemo ? "Sample call · Do not share real patient records" : "Your consultation"}</SheetDescription></SheetHeader><div className="my-6 space-y-5 border-y py-5"><div><p className="text-xs text-muted-foreground">Patient</p><p className="mt-1 font-medium">{isDemo ? "Sample patient" : "Consultation participant"}</p><p className="mt-1 text-xs text-muted-foreground">UAE PASS not linked</p></div><div><p className="text-xs text-muted-foreground">Doctor</p><p className="mt-1 font-medium">{doctorName}</p></div><div><p className="text-xs text-muted-foreground">Reason for visit</p><p className="mt-1 break-words text-sm">{sampleVisit?.reason || patientVisit?.reason || recordReason || "General consultation"}</p></div></div>{joinedCall && <CallChat call={joinedCall} sample={isDemo} />}{sampleVisit && <ClinicalNotesPanel key={sampleVisit.id} visit={sampleVisit} />}</SheetContent></Sheet>
+    <Sheet modal={false} open={detailsOpen} onOpenChange={setDetailsOpen}><SheetContent forceMount className="w-[85vw] sm:w-96 max-w-[85vw] overflow-y-auto data-[state=closed]:hidden" aria-describedby="consultation-details-description"><SheetHeader className="text-start"><SheetTitle>Consultation details</SheetTitle><SheetDescription id="consultation-details-description">{isDemo ? "Sample call · Do not share real patient records" : "Your consultation"}</SheetDescription></SheetHeader><div className="my-6 space-y-5 border-y py-5"><div><p className="text-xs text-muted-foreground">Patient</p><p className="mt-1 font-medium">{isDemo ? "Sample patient" : "Consultation participant"}</p><p className="mt-1 text-xs text-muted-foreground">UAE PASS not linked</p></div><div><p className="text-xs text-muted-foreground">Doctor</p><p className="mt-1 font-medium">{doctorName}</p></div><div><p className="text-xs text-muted-foreground">Reason for visit</p><p className="mt-1 break-words text-sm">{sampleVisit?.reason || patientVisit?.reason || recordReason || "General consultation"}</p></div></div>{joinedCall && <CallChat call={joinedCall} sample={isDemo} />}{sampleVisit && <><ClinicalNotesPanel key={sampleVisit.id} visit={sampleVisit} /><PatientJournal consultationId={sampleVisit.id} patientId={sampleVisit.patientId} patientName={sampleVisit.name} sample canAdd /></>}{!isDemo && liveDoctor && consultationId && <PatientJournal consultationId={consultationId} canAdd />}</SheetContent></Sheet>
     <AlertDialog open={endOpen} onOpenChange={setEndOpen}><AlertDialogContent className="w-[calc(100%-2rem)] rounded-lg"><AlertDialogHeader><AlertDialogTitle>{isDemo && demoRole === "doctor" ? "End this consultation?" : `End consultation with ${doctorName}?`}</AlertDialogTitle><AlertDialogDescription>{isDemo && demoRole === "doctor" ? "This will also disconnect the patient from the call." : "You will leave the video consultation."}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Stay in call</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => void leave()}>End consultation</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </div>;
 };

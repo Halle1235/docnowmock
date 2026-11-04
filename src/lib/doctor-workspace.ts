@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { MOCK_LOGIN_ENABLED } from "./mock-login";
+import { sampleJournal } from "./patient-journal";
 
 export interface PrescriptionDraft {
   medicine: string;
@@ -9,6 +10,7 @@ export interface PrescriptionDraft {
 }
 export interface DoctorVisit {
   id: string;
+  patientId: string;
   name: string;
   dateOfBirth: string;
   allergies: string;
@@ -55,7 +57,7 @@ export function validPrescription(p: PrescriptionDraft) {
 }
 
 function sampleVisit(id: string, createdAt: number): DoctorVisit {
-  return { id, name: "Sample patient", dateOfBirth: "1992-04-18", allergies: "Penicillin (sample)", reason: "Sore throat", symptoms: "Sore throat for two days; no reported fever (sample)", createdAt, status: "pending", notes: "", prescriptions: [] };
+  return { id, patientId: id === "sample-1" ? "sample-patient" : `patient-${id}`, name: "Sample patient", dateOfBirth: "1992-04-18", allergies: "Penicillin (sample)", reason: "Sore throat", symptoms: "Sore throat for two days; no reported fever (sample)", createdAt, status: "pending", notes: "", prescriptions: [] };
 }
 let snapshot = { available: false, sound: false, visits: [sampleVisit("sample-1", Date.now() - 7 * 60000)] as DoctorVisit[] };
 const listeners = new Set<() => void>();
@@ -86,6 +88,11 @@ export const doctorWorkspace = {
     if (!MOCK_LOGIN_ENABLED || !visit || visit.status === "pending" || visit.status === "completed") return false;
     updateVisit(id, v => ({ ...v, notes, prescriptions: prescriptions.map(p => ({ ...p })) }));
     return true;
+  },
+  addJournalEntry: (id: string, diagnosis: string, treatment: string, notes: string) => {
+    const visit = snapshot.visits.find(v => v.id === id);
+    if (!visit || !["claimed", "in_progress"].includes(visit.status)) return false;
+    return sampleJournal.add(visit.patientId, visit.id, diagnosis, treatment, notes);
   },
   startCall: (id: string, now = Date.now()) => updateVisit(id, v => v.status === "claimed" ? { ...v, status: "in_progress", startedAt: now } : v),
   saveFollowUp: (id: string, date: string, reason: string) => {
