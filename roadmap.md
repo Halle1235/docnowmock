@@ -1,4 +1,5 @@
 # Tasks
+- [x] Add and run actual room-handler tests with synthetic service boundaries for assigned participants, outsiders, anonymous access, and room-scoped credentials; rerun deployed permission checks. Signed-in end-to-end testing remains blocked below.
 - [x] Redesign original waiting room and call screens with camera/mic selectors, truthful status badges, call timer, details drawer, and end-call confirmation; verify a two-person sample call at 360px and desktop.
 - [x] Require patient agreement and simulated payment before creating a paid follow-up; verify cancellation, AED 249 payment readback, and duplicate prevention.
 - [x] Add sample queue status, health profile, prescription/receipt downloads, ratings, and follow-up rebooking to original My visits.
