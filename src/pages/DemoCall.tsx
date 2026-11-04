@@ -28,6 +28,12 @@ export default function DemoCall() {
       });
       callRef.current = frame;
       frame.on("left-meeting", back);
+      if (role === "patient") {
+        // When the doctor leaves, end the call for the patient too.
+        frame.on("participant-left", (ev) => {
+          if (ev?.participant?.user_name === "Doctor (demo)") frame.leave();
+        });
+      }
       try { await frame.join({ url: data.url, token: data.token }); }
       catch { setError("Could not join the call. Check camera and microphone permissions."); }
     })();
