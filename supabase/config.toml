@@ -1,1 +1,3 @@
 project_id = "hewnuvtxkltviuqqkphp"
+[functions.demo-call-room]
+verify_jwt = false
