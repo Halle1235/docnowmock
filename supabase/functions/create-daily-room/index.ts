@@ -11,7 +11,6 @@ Deno.serve(async (req) => {
     if (!DAILY_API_KEY) throw new Error("DAILY_API_KEY not configured");
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -40,8 +39,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { data: consult, error: consultErr } = await userClient.rpc("get_authorized_call_record", { _consultation_id: consultationId });
 

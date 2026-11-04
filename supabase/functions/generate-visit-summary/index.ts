@@ -52,7 +52,6 @@ Deno.serve(async (req) => {
     const language = body.language === "ar" ? "Arabic" : "English";
     if (!/^[0-9a-f-]{36}$/i.test(consultationId)) return json({ error: "Invalid consultationId" }, 400);
 
-    const admin = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: consult, error: consultError } = await userClient.rpc("get_authorized_call_record", { _consultation_id: consultationId });
     if (consultError || !consult) return json({ error: "Consultation access denied" }, 403);
     if (consult.doctor_id !== userData.user.id) return json({ error: "Only the assigned doctor can do this" }, 403);
