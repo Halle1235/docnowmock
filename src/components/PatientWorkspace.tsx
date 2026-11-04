@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import LanguageSwitcher from "./LanguageSwitcher";
 import DeviceCheck from "./DeviceCheck";
-import { patientWorkspace, usePatientWorkspace, type PatientVisit } from "@/lib/patient-workspace";
+import { patientWorkspace, usePatientWorkspace, SAMPLE_VISIT_PRICE, type PatientVisit } from "@/lib/patient-workspace";
 import { demoCallPath } from "@/lib/mock-login";
 import { buildVisitPdf } from "@/lib/visit-pdf";
 import { deliverFile } from "@/lib/file-download";
@@ -35,6 +36,9 @@ export default function PatientWorkspace() {
   const [doctorInCall, setDoctorInCall] = useState(false);
   const [queueError, setQueueError] = useState(false);
   const [deviceOpen, setDeviceOpen] = useState(false);
+  const [bookingId, setBookingId] = useState<string | null>(null);
+  const [agreed, setAgreed] = useState(false);
+  const booking = state.visits.find(visit => visit.id === bookingId);
   const waiting = state.visits.filter(v => v.status === "waiting");
   const completed = state.visits.filter(v => v.status === "completed");
   useEffect(() => {
@@ -54,9 +58,10 @@ export default function PatientWorkspace() {
         </TabsContent>
         <TabsContent value="profile" className="mt-5 space-y-5 max-w-2xl"><h3 className="text-xl font-semibold">Health profile</h3>{([['allergies', 'Allergies'], ['medicines', 'Current medicines'], ['conditions', 'Long-term conditions']] as const).map(([key, label]) => <div key={key} className="space-y-2"><Label htmlFor={`health-${key}`}>{label}</Label><Textarea id={`health-${key}`} rows={3} maxLength={2000} value={profile[key]} onChange={e => setProfile({ ...profile, [key]: e.target.value })} /></div>)}<Button onClick={() => { if (patientWorkspace.saveProfile(profile)) toast.success("Sample health profile saved"); }}>Save health profile</Button><p className="text-xs text-muted-foreground">Shared with the sample doctor on this device · Do not enter real health information</p></TabsContent>
         <TabsContent value="payments" className="mt-5 space-y-4"><h3 className="text-xl font-semibold">Payment history</h3>{state.visits.map(visit => <div key={visit.id} className="border-b py-4 flex flex-wrap justify-between items-center gap-4"><div><p className="font-medium">{visit.reason}</p><p className="text-sm text-muted-foreground">{new Date(visit.createdAt).toLocaleDateString()} · {visit.amount ? "Simulated payment" : "No charge"}</p></div><span className="font-semibold">AED {visit.amount.toFixed(2)}</span><VisitDownload visit={visit} kind="receipt" /></div>)}</TabsContent>
-        <TabsContent value="followups" className="mt-5 space-y-4"><h3 className="text-xl font-semibold">Suggested check-ups</h3>{completed.filter(visit => visit.followUpDate).map(visit => <Card key={visit.id} className="p-5 rounded-lg space-y-3"><div className="flex flex-wrap justify-between gap-2"><h4 className="font-semibold">{visit.followUpReason}</h4><Badge variant="outline">{visit.followUpDate}</Badge></div><p className="text-sm text-muted-foreground">{visit.doctor} · Sample reminder</p><Button disabled={visit.rebooked || !!waiting.length} onClick={() => { if (patientWorkspace.rebook(visit.id)) toast.success("Sample follow-up added to visits · No charge"); }}>{visit.rebooked ? "Rebooked" : "Rebook follow-up"}</Button>{waiting.length > 0 && !visit.rebooked && <p className="text-sm text-muted-foreground">Complete your current visit before rebooking</p>}</Card>)}{!completed.some(v => v.followUpDate) && <p className="text-muted-foreground">No check-ups suggested</p>}</TabsContent>
+        <TabsContent value="followups" className="mt-5 space-y-4"><h3 className="text-xl font-semibold">Suggested check-ups</h3>{completed.filter(visit => visit.followUpDate).map(visit => <Card key={visit.id} className="p-5 rounded-lg space-y-3"><div className="flex flex-wrap justify-between gap-2"><h4 className="font-semibold">{visit.followUpReason}</h4><Badge variant="outline">{visit.followUpDate}</Badge></div><p className="text-sm text-muted-foreground">{visit.doctor} · Doctor-suggested · Patient agreement required</p><Button disabled={visit.rebooked || !!waiting.length} onClick={() => { setAgreed(false); setBookingId(visit.id); }}>{visit.rebooked ? "Rebooked" : `Rebook · AED ${SAMPLE_VISIT_PRICE}`}</Button>{waiting.length > 0 && !visit.rebooked && <p className="text-sm text-muted-foreground">Complete your current visit before rebooking</p>}</Card>)}{!completed.some(v => v.followUpDate) && <p className="text-muted-foreground">No check-ups suggested</p>}</TabsContent>
       </Tabs>
     </main>
+    <Dialog open={!!booking} onOpenChange={open => { if (!open) { setBookingId(null); setAgreed(false); } }}><DialogContent className="max-w-lg" aria-describedby={undefined}><DialogHeader><DialogTitle>Confirm paid follow-up</DialogTitle></DialogHeader>{booking && <div className="space-y-5"><div><p className="font-medium">{booking.reason}</p><p className="text-sm text-muted-foreground">{booking.doctor} · Suggested check-up: {booking.followUpDate}</p></div><div className="border-y py-4 flex justify-between gap-3"><span>Follow-up consultation</span><strong>AED {SAMPLE_VISIT_PRICE.toFixed(2)}</strong></div><div className="flex gap-3 items-start"><Checkbox id="followup-agreement" checked={agreed} onCheckedChange={value => setAgreed(value === true)} /><Label htmlFor="followup-agreement" className="leading-5">I agree to this doctor-suggested follow-up and the AED {SAMPLE_VISIT_PRICE} consultation fee.</Label></div><p className="text-sm text-muted-foreground">Mock payment only · No money charged · No card details needed</p><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => { setBookingId(null); setAgreed(false); }}>Cancel</Button><Button disabled={!agreed || booking.rebooked || !!waiting.length} onClick={() => { if (patientWorkspace.payAndRebook(booking.id, agreed)) { setBookingId(null); setAgreed(false); toast.success("Mock payment completed · Paid follow-up booked"); } else toast.error("Follow-up cannot be booked right now"); }}>Simulate payment · AED {SAMPLE_VISIT_PRICE}</Button></div></div>}</DialogContent></Dialog>
     <Dialog open={deviceOpen} onOpenChange={setDeviceOpen}><DialogContent className="max-w-xl" aria-describedby={undefined}><DialogHeader><DialogTitle>Camera & microphone check</DialogTitle></DialogHeader><DeviceCheck canJoin={doctorInCall && waiting.length > 0} onJoin={() => navigate(demoCallPath("patient"))} /></DialogContent></Dialog>
   </div>;
 }
