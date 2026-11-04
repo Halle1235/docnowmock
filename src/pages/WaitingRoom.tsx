@@ -1,277 +1,74 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, ArrowRight, Clock3, HeartPulse, Loader2, ShieldCheck, Stethoscope, UserRound, Video } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { toast } from "sonner";
+import PrejoinCameraCheck from "@/components/video/PrejoinCameraCheck";
+import { DEMO_CALL_ID, MOCK_LOGIN_ENABLED, demoCallPath } from "@/lib/mock-login";
+import { usePatientWorkspace } from "@/lib/patient-workspace";
 
-interface DoctorInfo {
-  full_name: string;
-  avatar_url?: string;
-  specialization?: string;
-  is_verified?: boolean;
-}
-
-interface QueueStatus {
-  position: number;
-  estimated_minutes: number;
-  available_doctors: number;
-}
-
-interface ConsultationData {
-  id: string;
-  status: string;
-  doctor_id?: string;
-  room_url?: string | null;
-}
-
+interface ConsultationData { id: string; status: string; room_url?: string | null; reason_description?: string | null }
+interface DoctorInfo { full_name: string; avatar_url?: string; specialization?: string; is_verified?: boolean }
+interface QueueData { position: number; estimated_minutes: number; available_doctors: number; doctor?: DoctorInfo }
 const WaitingRoom = () => {
-  const navigate = useNavigate();
-  const { t } = useTranslation();
-  const [searchParams] = useSearchParams();
-  const consultationId = searchParams.get("id");
-
+  const navigate = useNavigate(); const [params] = useSearchParams();
+  const id = params.get("id"); const isSample = MOCK_LOGIN_ENABLED;
+  const workspace = usePatientWorkspace();
+  const visit = workspace.visits.find(v => v.id === params.get("visit") && v.status === "waiting") || workspace.visits.find(v => v.status === "waiting");
   const [consultation, setConsultation] = useState<ConsultationData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [doctorInfo, setDoctorInfo] = useState<DoctorInfo | null>(null);
-  const [queue, setQueue] = useState<QueueStatus | null>(null);
-
-  const loadQueue = async () => {
-    if (!consultationId) return;
-    const { data, error } = await supabase.rpc("get_queue_status", { _consultation_id: consultationId });
-    if (error || !data) return;
-    const d = data as any;
-    setQueue({ position: d.position, estimated_minutes: d.estimated_minutes, available_doctors: d.available_doctors });
-    if (d.doctor) {
-      setDoctorInfo({
-        full_name: d.doctor.full_name || "Your doctor",
-        avatar_url: d.doctor.avatar_url ?? undefined,
-        specialization: d.doctor.specialization ?? undefined,
-        is_verified: d.doctor.is_verified ?? false,
-      });
-    }
-  };
-
+  const [queue, setQueue] = useState<QueueData | null>(null);
+  const [ready, setReady] = useState(false); const [loading, setLoading] = useState(!isSample);
+  const [error, setError] = useState("");
   useEffect(() => {
-    if (!consultationId) return;
-    loadQueue();
-    const timer = setInterval(loadQueue, 15000);
-    return () => clearInterval(timer);
-  }, [consultationId]);
-
-  useEffect(() => {
-    if (!consultationId) {
-      navigate("/");
-      return;
-    }
-
-    loadConsultation();
-    const cleanup = subscribeToConsultation();
-    return cleanup;
-  }, [consultationId]);
-
-  const loadConsultation = async () => {
-    try {
-      // Make sure the signed-in session is ready before reading the booking
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("Please sign in to view your consultation");
-        navigate("/auth");
-        return;
-      }
-
-      let data: ConsultationData | null = null;
-      for (let attempt = 0; attempt < 3 && !data; attempt++) {
-        const res = await supabase
-          .from("consultations")
-          .select("id, status, doctor_id, room_url")
-          .eq("id", consultationId)
-          .maybeSingle();
-        if (res.error) throw res.error;
-        data = res.data;
-        if (!data) await new Promise((r) => setTimeout(r, 700));
-      }
-      if (!data) throw new Error("Consultation not found");
-      setConsultation(data);
-
-      if (data.room_url) {
-        navigate(`/call/${consultationId}`);
-        return;
-      }
-
-      if (data.doctor_id) {
-        await loadDoctorInfo(data.doctor_id);
-      }
-    } catch (error: any) {
-      console.error("Error loading consultation:", error);
-      toast.error("Failed to load consultation");
-      navigate("/");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadDoctorInfo = async (doctorId: string) => {
-    try {
-      await loadQueue();
-      return;
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", doctorId)
-        .maybeSingle();
-
-      const { data: doctorData } = await supabase
-        .from("doctor_profiles")
-        .select("avatar_url")
-        .eq("user_id", doctorId)
-        .maybeSingle();
-
-      setDoctorInfo({
-        full_name: profileData?.full_name || "Your doctor",
-        avatar_url: doctorData?.avatar_url ?? undefined,
-      });
-    } catch (error) {
-      console.error("Error loading doctor info:", error);
-    }
-  };
-
-  const subscribeToConsultation = () => {
-    const channel = supabase
-      .channel(`consultation-${consultationId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "consultations",
-          filter: `id=eq.${consultationId}`,
-        },
-        async (payload) => {
-          const updated = payload.new as ConsultationData;
-          setConsultation(updated);
-          loadQueue();
-
-          if (updated.room_url) {
-            navigate(`/call/${consultationId}`);
-            return;
-          }
-
-          if (updated.doctor_id && !doctorInfo) {
-            await loadDoctorInfo(updated.doctor_id);
-            toast.success(t("waitingRoom.doctorAssigned"));
-          }
+    let active = true; let fetching = false;
+    const load = async () => {
+      if (fetching) return; fetching = true;
+      try {
+        if (isSample) {
+          const { data, error } = await supabase.functions.invoke("demo-call-room", { body: { action: "status" } });
+          if (!active) return;
+          setReady(!error && !!data?.doctorInCall); setError(error ? "Call status unavailable. Trying again…" : "");
+        } else {
+          if (!id) { navigate("/my-visits"); return; }
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) { navigate("/auth"); return; }
+          const [record, status] = await Promise.all([
+            supabase.from("consultations").select("id, status, room_url, reason_description").eq("id", id).maybeSingle(),
+            supabase.rpc("get_queue_status", { _consultation_id: id }),
+          ]);
+          if (!active) return;
+          if (record.error || !record.data) throw new Error("Unable to load this consultation.");
+          setConsultation(record.data); setReady(!!record.data.room_url && ["claimed", "in_progress"].includes(record.data.status));
+          if (!status.error && status.data) setQueue(status.data as unknown as QueueData);
+          setError(status.error ? "Queue estimate unavailable" : "");
         }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
+      } catch { if (active) { setReady(false); setError("Unable to load consultation status. Trying again…"); } }
+      finally { fetching = false; if (active) setLoading(false); }
     };
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    void load(); const timer = setInterval(load, isSample ? 4000 : 15000);
+    const channel = !isSample && id ? supabase.channel(`waiting-${id}-${crypto.randomUUID()}`).on("postgres_changes", { event: "UPDATE", schema: "public", table: "consultations", filter: `id=eq.${id}` }, () => { void load(); }).subscribe() : null;
+    return () => { active = false; clearInterval(timer); if (channel) void supabase.removeChannel(channel); };
+  }, [id, isSample, navigate]);
+  const doctor = isSample ? { full_name: visit?.doctor || "Your doctor", specialization: "General practitioner" } : queue?.doctor;
+  const canJoin = ready && (isSample ? !!visit : !!consultation);
+  const wait = ready ? "Ready now" : isSample ? "~3 mins" : queue ? queue.estimated_minutes < 3 ? "< 3 mins" : `~${queue.estimated_minutes} mins` : "—";
+  return <div className="min-h-screen bg-lounge">
+    <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur"><div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-6"><div className="flex items-center gap-2 text-primary"><HeartPulse className="h-7 w-7" /><span className="text-xl font-bold">DocNow</span><span className="ms-3 hidden items-center gap-1 border-s ps-4 text-xs text-muted-foreground md:flex"><ShieldCheck className="h-4 w-4" />{isSample ? "Sample consultation" : "Patient consultation"}</span></div><nav className="flex items-center gap-1"><Button variant="ghost" size="sm" onClick={() => navigate("/my-visits")}>My visits</Button><LanguageSwitcher /></nav></div></header>
+    <main className="mx-auto max-w-6xl px-4 py-7 sm:px-6 lg:py-10">
+      <Button variant="ghost" size="sm" className="mb-5 px-0" onClick={() => navigate("/my-visits")}><ArrowLeft className="me-2 h-4 w-4" />Back to my visits</Button>
+      <div className="mb-7"><p className="mb-2 text-sm font-medium text-primary">YOUR CONSULTATION</p><h1 className="text-3xl font-semibold">Waiting room</h1><p className="mt-2 text-sm text-muted-foreground">{ready ? "Your doctor is ready to see you." : "Your doctor will be with you shortly."}</p></div>
+      <div className="grid items-start gap-7 lg:grid-cols-12">
+        <section className="min-w-0 lg:col-span-7"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-semibold">Camera & microphone</h2><span className="text-xs text-muted-foreground">Before you join</span></div><PrejoinCameraCheck name={isSample ? "Sample patient · You" : "You"} /><div className="mt-6 flex gap-3 border-t pt-5 text-sm text-muted-foreground"><ShieldCheck className="h-5 w-5 shrink-0 text-primary" /><p>{isSample ? "Shared sample room · Do not share real health information. UAE PASS and healthcare compliance are not verified." : "Your device preview stays on this device. UAE PASS verification is not linked."}</p></div></section>
+        <aside className="min-w-0 space-y-4 lg:col-span-5">
+          <section className="flex items-center gap-4 rounded-lg border bg-card p-5"><Avatar className="h-16 w-16"><AvatarImage src={doctor?.avatar_url} alt={doctor?.full_name} /><AvatarFallback className="bg-accent text-primary"><Stethoscope className="h-7 w-7" /></AvatarFallback></Avatar><div className="min-w-0"><p className="mb-1 text-xs text-muted-foreground">{doctor ? "Your doctor" : "Finding your doctor"}</p><h2 className="break-words text-lg font-semibold">{doctor?.full_name || "Next available doctor"}</h2><p className="text-sm text-muted-foreground">{doctor?.specialization || "General consultation"}</p>{isSample && <p className="mt-1 text-xs text-primary">Sample doctor · Not licence-verified</p>}</div></section>
+          <section className="rounded-lg border bg-card p-5"><div className="mb-5 flex items-center justify-between"><h2 className="font-semibold">Consultation status</h2><span className={`flex items-center gap-1.5 text-xs ${ready ? "text-success" : "text-muted-foreground"}`}><span className={`h-2 w-2 rounded-full ${ready ? "bg-success" : "bg-primary"}`} />{ready ? "Doctor ready" : "Waiting"}</span></div><div className="grid grid-cols-2 gap-4"><div><p className="text-xs text-muted-foreground">Estimated wait</p><p className="mt-2 text-2xl font-semibold text-primary">{wait}</p></div><div className="border-s ps-5"><p className="text-xs text-muted-foreground">Your place in line</p><p className="mt-2 text-2xl font-semibold">{isSample ? visit ? "#1" : "—" : queue ? `#${queue.position}` : "—"}</p></div></div><p className="mt-5 flex items-center gap-2 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" />{isSample ? "Sample estimate · Call availability updates live" : "Wait times are estimates"}</p>{error && <p role="status" className="mt-3 text-sm text-destructive">{error}</p>}</section>
+          <section className="rounded-lg border bg-card p-5"><h2 className="mb-3 flex items-center gap-2 font-semibold"><UserRound className="h-4 w-4 text-primary" />Reason for your visit</h2><p className="break-words text-sm text-muted-foreground">{isSample ? visit?.reason || "No active visit" : consultation?.reason_description || "General consultation"}</p></section>
+          <Button className="h-12 w-full gap-2 rounded-xl font-semibold shadow-md" disabled={!canJoin || loading} onClick={() => navigate(isSample ? `${demoCallPath("patient")}&visit=${visit?.id || "sample-1"}` : `/call/${id}`)}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}Join Video Consultation<ArrowRight className="ms-auto h-4 w-4" /></Button><p className="text-center text-xs text-muted-foreground">{ready ? "Your microphone will be muted when you enter." : "You can enter once the doctor starts the call."}</p>
+        </aside>
       </div>
-    );
-  }
-
-  const isDoctorAssigned = consultation?.status === "claimed" && doctorInfo;
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col">
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary">{t("header.brand")}</h1>
-          <div className="flex items-center gap-2">
-            <a href="/my-visits" className="text-sm font-medium text-primary hover:underline">My visits</a>
-            <LanguageSwitcher />
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 flex items-center justify-center px-4">
-        <div className="text-center space-y-8 max-w-md w-full">
-          {!isDoctorAssigned ? (
-            <>
-              <div className="relative mx-auto w-24 h-24">
-                <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
-                <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold mb-2">{t("waitingRoom.title")}</h2>
-                <p className="text-muted-foreground">{t("waitingRoom.subtitle")}</p>
-              </div>
-              <div className="bg-white rounded-2xl shadow-sm border p-6">
-                <div className="grid grid-cols-2 divide-x">
-                  <div className="px-2">
-                    <p className="text-sm text-muted-foreground">Your place in line</p>
-                    <p className="text-3xl font-bold text-primary mt-1">
-                      {queue ? `#${queue.position}` : "—"}
-                    </p>
-                  </div>
-                  <div className="px-2">
-                    <p className="text-sm text-muted-foreground">{t("waitingRoom.estimatedWait")}</p>
-                    <p className="text-3xl font-bold text-primary mt-1">
-                      {queue ? `~${queue.estimated_minutes} min` : "—"}
-                    </p>
-                  </div>
-                </div>
-                {queue && (
-                  <p className="text-xs text-muted-foreground mt-4">
-                    {queue.available_doctors} doctor{queue.available_doctors === 1 ? "" : "s"} online · updates live
-                  </p>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground animate-pulse">
-                {t("waitingRoom.lookingForDoctor")}
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="flex flex-col items-center gap-4">
-                <div className="rounded-full bg-green-100 p-3">
-                  <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <h2 className="text-2xl font-bold">{t("waitingRoom.doctorAssigned")}</h2>
-              </div>
-
-              <div className="bg-white rounded-2xl shadow-sm border p-6 flex flex-col items-center gap-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={doctorInfo.avatar_url} />
-                  <AvatarFallback className="bg-primary/10">
-                    <User className="h-10 w-10 text-primary" />
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="font-semibold text-lg">Dr. {doctorInfo.full_name.replace(/^Dr\.?\s*/i, "")}</div>
-                  {doctorInfo.specialization && (
-                    <div className="text-sm font-medium text-primary">{doctorInfo.specialization}</div>
-                  )}
-                  {doctorInfo.is_verified && (
-                    <div className="text-xs text-muted-foreground mt-1">✓ Licensed &amp; verified</div>
-                  )}
-                  <div className="text-sm text-muted-foreground">
-                    {t("waitingRoom.doctorAccepted")}
-                  </div>
-                </div>
-              </div>
-
-              <p className="text-sm text-muted-foreground">
-                {t("waitingRoom.preparing")}
-              </p>
-            </>
-          )}
-        </div>
-      </main>
-    </div>
-  );
+    </main>
+  </div>;
 };
-
 export default WaitingRoom;

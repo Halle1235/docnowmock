@@ -18,7 +18,7 @@ All colors MUST be HSL.
     --popover-foreground: 215 25% 27%;
 
     /* Medical teal/cyan color scheme similar to KRY */
-    --primary: 184 85% 39%;
+    --primary: 182 83% 35%;
     --primary-foreground: 0 0% 100%;
     --primary-hover: 184 85% 32%;
 
@@ -56,6 +56,17 @@ All colors MUST be HSL.
     --warning-foreground: 0 0% 100%;
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
+    --lounge: 180 20% 97%;
+    --call-background: 222 47% 11%;
+    --call-foreground: 0 0% 100%;
+    --call-border: 217 33% 17%;
+    --call-accent: 182 83% 35%;
+    /* Daily's external iframe accepts hex tokens only. */
+    --daily-accent: #0FA0A5;
+    --daily-foreground: #FFFFFF;
+    --daily-background: #0F172A;
+    --daily-border: #1E293B;
+    --preview-background: 210 18% 93%;
   }
 
   .dark {
@@ -115,3 +126,7 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+.microphone-bars { display: flex; align-items: center; gap: 3px; height: 24px; }
+.microphone-bars span { width: 4px; min-height: 4px; border-radius: 2px; background: hsl(var(--success)); transition: height 100ms; }
+@media (prefers-reduced-motion: reduce) { .microphone-bars span { transition: none; } }
