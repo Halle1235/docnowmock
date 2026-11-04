@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { MOCK_LOGIN_ENABLED } from "./mock-login";
 
@@ -45,4 +46,18 @@ export async function completeTestBooking(id: string) {
   if (!MOCK_LOGIN_ENABLED || !isTestBookingId(id)) return false;
   const { data } = await supabase.rpc("complete_test_booking", { _id: id });
   return data === true;
+}
+
+/** Polls the patient's own shared test booking (id kept in this tab's session) for acceptance. */
+export function useOwnTestBooking() {
+  const [id] = useState(() => { const v = typeof sessionStorage !== "undefined" ? sessionStorage.getItem(TEST_BOOKING_KEY) : null; return MOCK_LOGIN_ENABLED && isTestBookingId(v) ? v : null; });
+  const [status, setStatus] = useState<TestBookingStatus | null>(null);
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+    const load = () => getTestBooking(id).then(b => { if (active) setStatus(b); }, () => {});
+    void load(); const t = setInterval(load, 4000);
+    return () => { active = false; clearInterval(t); };
+  }, [id]);
+  return { id, status };
 }
