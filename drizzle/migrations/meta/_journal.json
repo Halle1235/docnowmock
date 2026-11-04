@@ -50,6 +50,13 @@
       "when": 1793765251105,
       "tag": "0006_test_bookings_revoke_direct_access",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793765915285,
+      "tag": "0007_journal_post_call_documentation",
+      "breakpoints": true
     }
   ]
 }

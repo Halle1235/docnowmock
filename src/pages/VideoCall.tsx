@@ -21,6 +21,7 @@ const VideoCall = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const callRef = useRef<DailyCall | null>(null);
   const joinedUrlRef = useRef<string | null>(null);
+  const postCallJournal = useRef(false);
   const [loading, setLoading] = useState(true);
   const [waitingForDoctor, setWaitingForDoctor] = useState(false);
   const [joinedCall, setJoinedCall] = useState<DailyCall | null>(null);
@@ -112,7 +113,8 @@ const VideoCall = () => {
             const waiting = patientWorkspace.getSnapshot().visits.find(v => v.status === "waiting");
             if (waiting) patientWorkspace.complete(waiting.id);
           }
-          navigate(isDemo ? mockLoginDestination(demoRole) : "/doctor-dashboard");
+          const completed = isDemo && demoRole === "doctor" && doctorWorkspace.getSnapshot().visits.some(v => v.id === visitId && v.status === "completed");
+          navigate(isDemo ? mockLoginDestination(demoRole) : postCallJournal.current ? "/doctor-dashboard" : "/my-visits", { state: completed || postCallJournal.current ? { journalId: isDemo ? visitId : consultationId } : null });
         });
         frame.on("error", (ev: any) => {
           console.error("[VideoCall] Daily error event", ev);
@@ -292,10 +294,11 @@ const VideoCall = () => {
   const leave = async () => {
     if (ending) return;
     if (!isDemo && liveDoctor && consultationId) {
+      postCallJournal.current = true;
       setEnding(true);
       const { error } = await supabase.functions.invoke("create-daily-room", { body: { consultationId, action: "end" } });
       setEnding(false);
-      if (error) { toast.error("Room closure could not be confirmed. Please retry ending the consultation."); return; }
+      if (error) { postCallJournal.current = false; toast.error("Room closure could not be confirmed. Please retry ending the consultation."); return; }
     }
     if (isDemo && demoRole === "doctor") {
       doctorWorkspace.finishCall(visitId);
@@ -307,7 +310,8 @@ const VideoCall = () => {
       try { callRef.current.destroy(); } catch {}
       callRef.current = null;
     }
-    navigate(isDemo ? mockLoginDestination(demoRole) : liveDoctor ? "/doctor-dashboard" : "/my-visits");
+    const completed = isDemo && demoRole === "doctor" && doctorWorkspace.getSnapshot().visits.some(v => v.id === visitId && v.status === "completed");
+    navigate(isDemo ? mockLoginDestination(demoRole) : liveDoctor ? "/doctor-dashboard" : "/my-visits", { state: completed || postCallJournal.current ? { journalId: isDemo ? visitId : consultationId } : null });
   };
 
   return <div className="h-[100dvh] min-h-0 bg-call flex flex-col">
