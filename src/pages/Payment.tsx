@@ -110,6 +110,9 @@ const Payment = () => {
           phone: userData.phone,
           passport_number: userData.passportNumber,
           date_of_birth: userData.dateOfBirth,
+          allergies: typeof userData.allergies === "string" && userData.allergies.trim()
+            ? userData.allergies.trim().slice(0, 500)
+            : null,
         });
 
       if (profileError) throw profileError;
