@@ -9,6 +9,7 @@ import { Clock, User, LogOut, Video, CheckCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import VisitSummaryDialog from "@/components/VisitSummaryDialog";
+import { MOCK_LOGIN_ENABLED, mockConsultation } from "@/lib/mock-login";
 
 interface Consultation {
   id: string;
@@ -35,6 +36,12 @@ const DoctorDashboard = () => {
   const [claimingId, setClaimingId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (MOCK_LOGIN_ENABLED) {
+      setConsultations([{ ...mockConsultation }]);
+      setUserEmail("Demo doctor");
+      setLoading(false);
+      return;
+    }
     checkAuth();
     loadConsultations();
 
@@ -130,6 +137,10 @@ const DoctorDashboard = () => {
   };
 
   const claimConsultation = async (consultationId: string) => {
+    if (MOCK_LOGIN_ENABLED) {
+      setConsultations((items) => items.map((item) => item.id === consultationId ? { ...item, status: "claimed" } : item));
+      return;
+    }
     setClaimingId(consultationId);
     
     try {
@@ -170,7 +181,7 @@ const DoctorDashboard = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    if (!MOCK_LOGIN_ENABLED) await supabase.auth.signOut();
     navigate("/auth");
   };
 
@@ -342,12 +353,12 @@ const DoctorDashboard = () => {
                               {t('dashboard.startVideo')}
                             </Button>
                           )}
-                          <VisitSummaryDialog
+                          {!MOCK_LOGIN_ENABLED && <VisitSummaryDialog
                             consultationId={consultation.id}
                             initialNotes={(consultation as any).notes}
                             initialSummary={(consultation as any).visit_summary}
                             onSaved={loadConsultations}
-                          />
+                          />}
                         </div>
                       </div>
                     </Card>

@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { supabase } from "@/integrations/supabase/client";
+import { MOCK_PAYMENT_ENABLED } from "@/lib/mock-login";
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -45,6 +46,20 @@ const Payment = () => {
 
     const userData = JSON.parse(registrationData);
     const medicalReason = JSON.parse(medicalReasonData);
+
+    if (MOCK_PAYMENT_ENABLED) {
+      sessionStorage.setItem("mockBooking", "true");
+      sessionStorage.removeItem("registrationData");
+      sessionStorage.removeItem("medicalReason");
+      sessionStorage.removeItem("consent");
+      setCardNumber("");
+      setExpiryDate("");
+      setCvv("");
+      setCardName("");
+      toast({ title: "Demo booking complete", description: "No payment was charged." });
+      navigate("/waiting-room?id=mock-consultation");
+      return;
+    }
 
     try {
       // Make sure we have an authenticated session (required by security rules)
@@ -228,6 +243,7 @@ const Payment = () => {
           </div>
 
           <div className="bg-card p-8 rounded-xl border shadow-sm">
+            {MOCK_PAYMENT_ENABLED && <p className="mb-4 text-sm text-muted-foreground">Demo payment · Use sample details only · No charge</p>}
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="cardName">{t('payment.cardHolder')} *</Label>
