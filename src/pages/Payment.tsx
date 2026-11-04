@@ -10,6 +10,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { supabase } from "@/integrations/supabase/client";
 import { MOCK_LOGIN_ENABLED } from "@/lib/mock-login";
 import { patientWorkspace } from "@/lib/patient-workspace";
+import { createTestBooking, testBookingInput, TEST_BOOKING_KEY } from "@/lib/test-bookings";
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -19,14 +20,28 @@ const Payment = () => {
   const [expiryDate, setExpiryDate] = useState("");
   const [cvv, setCvv] = useState("");
   const [cardName, setCardName] = useState("");
+  const [booking, setBooking] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (MOCK_LOGIN_ENABLED) {
-      patientWorkspace.bookSample();
-      ["registrationData", "medicalReason", "consent"].forEach(key => sessionStorage.removeItem(key));
-      toast({ title: "Simulated payment complete", description: "Fictional booking added to the sample doctor queue. No money charged." });
-      navigate("/waiting-room?id=demo&visit=sample-1");
+      let reg: { fullName?: unknown } = {}; let med: { category?: unknown; description?: unknown } = {};
+      try { reg = JSON.parse(sessionStorage.getItem("registrationData") || "{}"); med = JSON.parse(sessionStorage.getItem("medicalReason") || "{}"); } catch { /* fall through to validation */ }
+      const reason = [med.category, med.description].filter(x => typeof x === "string" && x.trim()).join(" · ").slice(0, 300);
+      const input = testBookingInput(reg.fullName, reason);
+      if (!input) { toast({ title: "Booking details missing", description: "Please fill in your name and reason for the visit first.", variant: "destructive" }); navigate("/registration"); return; }
+      setBooking(true);
+      try {
+        const bookingId = await createTestBooking(input.name, input.reason);
+        if (!bookingId) throw new Error("Booking failed");
+        sessionStorage.setItem(TEST_BOOKING_KEY, bookingId);
+        patientWorkspace.bookSample(input.reason, true);
+        ["registrationData", "medicalReason", "consent"].forEach(key => sessionStorage.removeItem(key));
+        toast({ title: "Simulated payment complete", description: "Your test booking is now in the doctor queue. No money charged." });
+        navigate(`/waiting-room?id=demo&visit=sample-1&booking=${bookingId}`);
+      } catch (err) {
+        toast({ title: "Booking failed", description: err instanceof Error && err.message.includes("full") ? "The test queue is full. Try again later." : "Could not reach the doctor queue. Please try again.", variant: "destructive" });
+      } finally { setBooking(false); }
       return;
     }
     
@@ -238,7 +253,7 @@ const Payment = () => {
 
           <div className="bg-card p-8 rounded-xl border shadow-sm">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {MOCK_LOGIN_ENABLED && <p className="text-sm text-muted-foreground">Sample payment · No money charged. No card details needed. Booking uses fictional patient Amina Hassan; your entered details are not sent to doctors.</p>}
+              {MOCK_LOGIN_ENABLED && <p className="text-sm text-muted-foreground">Sample payment · No money charged. No card details needed. Test mode: your name and visit reason are shown in a shared doctor queue that anyone with the link can open. Use made-up details only — never real health information. Bookings delete themselves after 3 hours.</p>}
               {!MOCK_LOGIN_ENABLED && <>
               <div className="space-y-2">
                 <Label htmlFor="cardName">{t('payment.cardHolder')} *</Label>
@@ -308,7 +323,7 @@ const Payment = () => {
               </div>
 
               </>}
-              <Button type="submit" className="w-full h-12 text-base" size="lg">
+              <Button type="submit" className="w-full h-12 text-base" size="lg" disabled={booking}>
                 {MOCK_LOGIN_ENABLED ? "Simulate payment · AED 249" : t('payment.payButton')}
               </Button>
             </form>

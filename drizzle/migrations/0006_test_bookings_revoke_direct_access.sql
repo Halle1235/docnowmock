@@ -1,0 +1,1 @@
+REVOKE ALL ON public.test_bookings FROM anon, authenticated, PUBLIC;

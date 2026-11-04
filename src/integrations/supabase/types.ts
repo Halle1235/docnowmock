@@ -263,6 +263,36 @@ export type Database = {
         }
         Relationships: []
       }
+      test_bookings: {
+        Row: {
+          claimed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          patient_name: string
+          reason: string
+          status: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          patient_name: string
+          reason: string
+          status?: string
+        }
+        Update: {
+          claimed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          patient_name?: string
+          reason?: string
+          status?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -336,6 +366,12 @@ export type Database = {
         Args: { _consultation_id: string }
         Returns: undefined
       }
+      claim_test_booking: { Args: { _id: string }; Returns: boolean }
+      complete_test_booking: { Args: { _id: string }; Returns: boolean }
+      create_test_booking: {
+        Args: { _name: string; _reason: string }
+        Returns: string
+      }
       get_authorized_call_record: {
         Args: { _consultation_id: string }
         Returns: Json
@@ -349,6 +385,7 @@ export type Database = {
         Returns: Json
       }
       get_queue_status: { Args: { _consultation_id: string }; Returns: Json }
+      get_test_booking: { Args: { _id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -382,6 +419,7 @@ export type Database = {
         Args: { _before?: string; _consultation_id: string }
         Returns: Json
       }
+      list_test_bookings: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "patient" | "doctor" | "admin"
