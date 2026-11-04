@@ -15,6 +15,7 @@ import { dailyStats, doctorWorkspace, isLongWait, patientAge, searchHistory, use
 import { demoCallPath } from "@/lib/mock-login";
 import { usePatientWorkspace } from "@/lib/patient-workspace";
 import { toast } from "sonner";
+import { claimTestBooking, listTestBookings } from "@/lib/test-bookings";
 import BookingNotifications from "./BookingNotifications";
 import { useBookingNotifications } from "@/hooks/use-booking-notifications";
 
@@ -30,6 +31,27 @@ export default function DoctorWorkspace() {
   const audio = useRef<AudioContext | null>(null);
   const seen = useRef(new Set(state.visits.map(v => v.id)));
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 10000); return () => clearInterval(id); }, []);
+  const [queueError, setQueueError] = useState(false);
+  const claiming = useRef(false);
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try { const rows = await listTestBookings(); if (active) { doctorWorkspace.syncTestBookings(rows); setQueueError(false); } }
+      catch { if (active) setQueueError(true); }
+    };
+    void load(); const id = setInterval(load, 4000);
+    return () => { active = false; clearInterval(id); };
+  }, []);
+  const take = async (v: DoctorVisit) => {
+    if (!v.testBooking) { if (!doctorWorkspace.claim(v.id)) toast.error("Consultation is no longer available"); return; }
+    if (claiming.current || !state.available) return;
+    claiming.current = true;
+    try {
+      if (await claimTestBooking(v.id)) { doctorWorkspace.markTestClaimed(v.id); toast.success(`You took ${v.name}'s consultation`); }
+      else { toast.error("Consultation already taken by another doctor"); doctorWorkspace.syncTestBookings(await listTestBookings()); }
+    } catch { toast.error("Could not reach the test queue. Try again."); }
+    finally { claiming.current = false; }
+  };
   useEffect(() => {
     const newVisits = state.visits.filter(v => v.status === "pending" && !seen.current.has(v.id));
     seen.current = new Set(state.visits.map(v => v.id));
@@ -55,9 +77,9 @@ export default function DoctorWorkspace() {
   const selected = state.visits.find(v => v.id === selectedId);
   const details = (v: DoctorVisit) => <div className="space-y-2 text-sm break-words"><p><span className="font-medium">Reason:</span> {v.reason}</p><p><span className="font-medium">Symptoms:</span> {v.symptoms}</p><div className="flex flex-wrap gap-x-6 gap-y-1"><p><span className="font-medium">Age:</span> {patientAge(v.dateOfBirth) ?? "Not reported"}</p><p><span className="font-medium">Allergies:</span> {v.id === "sample-1" ? patient.profile.allergies || "Not reported" : v.allergies || "Not reported"}</p></div>{v.id === "sample-1" && <><p><span className="font-medium">Current medicines:</span> {patient.profile.medicines || "Not reported"}</p><p><span className="font-medium">Long-term conditions:</span> {patient.profile.conditions || "Not reported"}</p></>}</div>;
   const visitCard = (v: DoctorVisit) => <Card key={v.id} className={`p-5 rounded-lg space-y-4 ${v.status === "pending" && isLongWait(v, now) ? "border-destructive" : ""}`}>
-    <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">{v.name}</h3><Badge variant={v.status === "pending" && isLongWait(v, now) ? "destructive" : "outline"}>{v.status === "pending" ? `Waiting ${waitMinutes(v, now)} min` : v.status === "in_progress" ? "In call" : "Assigned"}</Badge></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">{v.name}{v.testBooking && <Badge variant="secondary" className="ms-2 align-middle">Test booking</Badge>}</h3><Badge variant={v.status === "pending" && isLongWait(v, now) ? "destructive" : "outline"}>{v.status === "pending" ? `Waiting ${waitMinutes(v, now)} min` : v.status === "in_progress" ? "In call" : "Assigned"}</Badge></div>
     {details(v)}
-    <div className="flex flex-wrap justify-between items-center gap-3 border-t pt-4"><span className="text-xs text-muted-foreground">{new Date(v.createdAt).toLocaleString()}</span>{v.status === "pending" ? <Button disabled={!state.available} onClick={() => { if (!doctorWorkspace.claim(v.id)) toast.error("Consultation is no longer available"); }}>Take consultation</Button> : <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setSelectedId(v.id)}><FileText className="h-4 w-4 me-2" />Notes & prescription</Button><Button onClick={() => navigate(`${demoCallPath("doctor")}&visit=${encodeURIComponent(v.id)}`)}><Video className="h-4 w-4 me-2" />{v.status === "in_progress" ? "Return to call" : "Start video"}</Button></div>}</div>
+    <div className="flex flex-wrap justify-between items-center gap-3 border-t pt-4"><span className="text-xs text-muted-foreground">{new Date(v.createdAt).toLocaleString()}</span>{v.status === "pending" ? <Button disabled={!state.available} onClick={() => void take(v)}>Take consultation</Button> : <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setSelectedId(v.id)}><FileText className="h-4 w-4 me-2" />Notes & prescription</Button><Button onClick={() => navigate(`${demoCallPath("doctor")}&visit=${encodeURIComponent(v.id)}`)}><Video className="h-4 w-4 me-2" />{v.status === "in_progress" ? "Return to call" : "Start video"}</Button></div>}</div>
   </Card>;
   return <div className="min-h-screen bg-background">
     <header className="border-b bg-card"><div className="container px-4 py-4 flex flex-wrap justify-between items-center gap-3"><h1 className="text-2xl font-bold text-primary">DocNow · Doctors</h1><div className="flex items-center gap-2"><BookingNotifications role="doctor" /><LanguageSwitcher /><Button variant="ghost" size="sm" onClick={() => navigate("/auth")}><LogOut className="h-4 w-4 me-2" />Log out</Button></div></div></header>
@@ -66,7 +88,7 @@ export default function DoctorWorkspace() {
       <section aria-label="Daily statistics" className="grid grid-cols-2 md:grid-cols-4 gap-5 border-y py-5"><div><p className="text-sm text-muted-foreground">Completed today</p><p className="text-3xl font-semibold mt-2">{stats.completed}</p></div><div><p className="text-sm text-muted-foreground">Average call length</p><p className="text-3xl font-semibold mt-2">{stats.averageSeconds === null ? "—" : `${Math.floor(stats.averageSeconds / 60)}:${String(stats.averageSeconds % 60).padStart(2, "0")}`}</p></div><div><p className="text-sm text-muted-foreground">Waiting</p><p className="text-3xl font-semibold mt-2">{pending.length}</p></div><div><p className="text-sm text-muted-foreground">Waiting 5+ minutes</p><p className="text-3xl font-semibold mt-2 text-destructive">{pending.filter(v => isLongWait(v, now)).length}</p></div></section>
       <Tabs defaultValue="queue"><div className="flex flex-wrap items-center justify-between gap-3"><TabsList className="h-auto flex-wrap justify-start"><TabsTrigger value="queue"><Clock className="h-4 w-4 me-2" />Queue</TabsTrigger><TabsTrigger value="active"><Activity className="h-4 w-4 me-2" />My consultations</TabsTrigger><TabsTrigger value="history"><FileText className="h-4 w-4 me-2" />History</TabsTrigger></TabsList><div className="flex gap-2"><Button variant="outline" size="icon" aria-label={state.sound ? "Mute queue sound" : "Enable queue sound"} title={state.sound ? "Mute queue sound" : "Enable queue sound"} aria-pressed={state.sound} onClick={toggleSound}>{state.sound ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}</Button><Button variant="outline" disabled={!state.available} onClick={doctorWorkspace.addSamplePatient}><Plus className="h-4 w-4 me-2" />Add sample patient</Button></div></div>
       <p className="text-sm text-primary mt-3 min-h-5" role="status" aria-live="polite">{arrival}</p>
-      <TabsContent value="queue" className="space-y-4">{!state.available && <p className="text-sm text-muted-foreground">Offline — not accepting new consultations</p>}{pending.length ? pending.map(visitCard) : <p className="py-8 text-center text-muted-foreground">No patients waiting</p>}</TabsContent>
+      <TabsContent value="queue" className="space-y-4">{!state.available && <p className="text-sm text-muted-foreground">Offline — not accepting new consultations</p>}{queueError && <p role="status" className="text-sm text-destructive">Test bookings unavailable. Retrying…</p>}{pending.length ? pending.map(visitCard) : <p className="py-8 text-center text-muted-foreground">No patients waiting</p>}</TabsContent>
       <TabsContent value="active" className="space-y-4">{active.length ? active.map(visitCard) : <p className="py-8 text-center text-muted-foreground">No assigned consultations</p>}</TabsContent>
       <TabsContent value="history" className="space-y-4"><div className="relative max-w-lg"><Search className="absolute start-3 top-3 h-4 w-4 text-muted-foreground" /><Input aria-label="Search consultation history" className="ps-9" placeholder="Search patient, notes or medicine" value={search} onChange={e => setSearch(e.target.value)} /></div>{history.length ? history.map(v => <Card key={v.id} className="p-5 rounded-lg space-y-3"><div className="flex flex-wrap justify-between gap-2"><h3 className="font-semibold">{v.name} · {v.reason}</h3><Badge variant="secondary">Completed</Badge><span className="text-sm text-muted-foreground">{v.completedAt ? new Date(v.completedAt).toLocaleString() : ""} · {v.durationSeconds ?? 0}s</span></div>{details(v)}<div className="border-t pt-3 space-y-2"><h4 className="font-medium">Notes</h4><p className="text-sm whitespace-pre-wrap break-words">{v.notes || "No notes saved"}</p><h4 className="font-medium">Prescription drafts</h4>{v.prescriptions.length ? v.prescriptions.map((p, i) => <p className="text-sm break-words" key={i}>{p.medicine} · {p.dose} · {p.frequency} · {p.duration}</p>) : <p className="text-sm text-muted-foreground">No prescription drafts</p>}</div><Button variant="outline" onClick={() => setSelectedId(v.id)}><FileText className="h-4 w-4 me-2" />Patient journal</Button></Card>) : <p className="py-8 text-center text-muted-foreground">{search ? "No matching consultations" : "No completed consultations yet"}</p>}</TabsContent></Tabs>
     </main>
