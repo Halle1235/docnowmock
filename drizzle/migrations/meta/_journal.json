@@ -1,5 +1,13 @@
 {
   "version": "7",
   "dialect": "postgresql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793760101260,
+      "tag": "0000_patient_record_authorization_audit",
+      "breakpoints": true
+    }
+  ]
 }

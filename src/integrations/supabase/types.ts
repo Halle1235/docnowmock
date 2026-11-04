@@ -258,6 +258,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      audit_patient_record_read: {
+        Args: { _id: string; _table: string }
+        Returns: boolean
+      }
+      claim_patient_consultation: {
+        Args: { _consultation_id: string }
+        Returns: undefined
+      }
+      get_authorized_call_record: {
+        Args: { _consultation_id: string }
+        Returns: Json
+      }
+      get_authorized_summary_draft: {
+        Args: { _consultation_id: string }
+        Returns: Json
+      }
       get_consultation_patient: {
         Args: { _consultation_id: string }
         Returns: Json
@@ -270,6 +286,28 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_authorized_doctor: { Args: { _user_id: string }; Returns: boolean }
+      list_admin_profiles: {
+        Args: never
+        Returns: {
+          allergies: string | null
+          created_at: string | null
+          date_of_birth: string | null
+          email: string
+          full_name: string
+          id: string
+          passport_number: string | null
+          phone: string | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      list_doctor_consultations: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "patient" | "doctor" | "admin"
