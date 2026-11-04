@@ -19,12 +19,20 @@ test("follow-up dates reject past or invalid calendar dates", () => {
   assert.equal(validFollowUp("2026-01-01", "Check-up", new Date("2026-02-01")), false);
   assert.equal(validFollowUp("2026-02-02", "Check-up", new Date("2026-02-01")), true);
 });
-test("rebooking is blocked during an active visit and never charges or duplicates", () => {
-  assert.equal(patientWorkspace.rebook("sample-past"), false);
+test("paid follow-up cannot be booked during an active visit", () => {
+  assert.equal(patientWorkspace.payAndRebook("sample-past", true), false);
   patientWorkspace.complete("sample-1");
-  assert.equal(patientWorkspace.rebook("sample-past"), true);
-  assert.equal(patientWorkspace.getSnapshot().visits.at(-1)?.amount, 0);
+});
+test("doctor suggestion does not book without patient agreement and payment", () => {
+  assert.equal(patientWorkspace.payAndRebook("sample-past", false), false);
   assert.equal(patientWorkspace.rebook("sample-past"), false);
+});
+test("follow-up uses the current AED 249 consultation price after simulated payment", () => {
+  assert.equal(patientWorkspace.payAndRebook("sample-past", true), true);
+  assert.equal(patientWorkspace.getSnapshot().visits.at(-1)?.amount, 249);
+});
+test("a paid follow-up cannot be booked twice", () => {
+  assert.equal(patientWorkspace.payAndRebook("sample-past", true), false);
 });
 test("file sharing rejects unsafe types, paths, and over-limit files", () => {
   assert.equal(validCallFileMetadata("lab.pdf", "application/pdf", MAX_CALL_FILE_BYTES), true);

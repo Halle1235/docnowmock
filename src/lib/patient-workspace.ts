@@ -47,7 +47,12 @@ export const patientWorkspace = {
   rebook: (id: string) => {
     const visit = snapshot.visits.find(v => v.id === id);
     if (!MOCK_LOGIN_ENABLED || !visit || visit.status !== "completed" || !visit.followUpDate || visit.rebooked || snapshot.visits.some(v => v.status === "waiting")) return false;
-    const next: PatientVisit = { id: `sample-followup-${crypto.randomUUID()}`, reason: `Follow-up: ${visit.reason}`, doctor: visit.doctor, createdAt: Date.now(), status: "waiting", prescriptions: [], amount: 0 };
+    return false; // Booking is only created through the agreed payment flow below.
+  },
+  payAndRebook: (id: string, patientAgreed: boolean) => {
+    const visit = snapshot.visits.find(v => v.id === id);
+    if (!MOCK_LOGIN_ENABLED || !patientAgreed || !visit || visit.status !== "completed" || !visit.followUpDate || !visit.followUpReason || visit.rebooked || snapshot.visits.some(v => v.status === "waiting")) return false;
+    const next: PatientVisit = { id: `sample-followup-${crypto.randomUUID()}`, reason: `Follow-up: ${visit.reason}`, doctor: visit.doctor, createdAt: Date.now(), status: "waiting", prescriptions: [], amount: SAMPLE_VISIT_PRICE };
     emit({ ...snapshot, visits: [...snapshot.visits.map(v => v.id === id ? { ...v, rebooked: true } : v), next] }); return true;
   },
 };
