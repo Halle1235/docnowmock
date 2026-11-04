@@ -14,6 +14,7 @@ import ClinicalNotesPanel from "@/components/ClinicalNotesPanel";
 import { dailyStats, doctorWorkspace, isLongWait, patientAge, searchHistory, useDoctorWorkspace, waitMinutes, type DoctorVisit } from "@/lib/doctor-workspace";
 import { demoCallPath } from "@/lib/mock-login";
 import { usePatientWorkspace } from "@/lib/patient-workspace";
+import { toast } from "sonner";
 
 export default function DoctorWorkspace() {
   const navigate = useNavigate();
@@ -53,7 +54,7 @@ export default function DoctorWorkspace() {
   const visitCard = (v: DoctorVisit) => <Card key={v.id} className={`p-5 rounded-lg space-y-4 ${v.status === "pending" && isLongWait(v, now) ? "border-destructive" : ""}`}>
     <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">{v.name}</h3><Badge variant={v.status === "pending" && isLongWait(v, now) ? "destructive" : "outline"}>{v.status === "pending" ? `Waiting ${waitMinutes(v, now)} min` : v.status === "in_progress" ? "In call" : "Assigned"}</Badge></div>
     {details(v)}
-    <div className="flex flex-wrap justify-between items-center gap-3 border-t pt-4"><span className="text-xs text-muted-foreground">{new Date(v.createdAt).toLocaleString()}</span>{v.status === "pending" ? <Button disabled={!state.available} onClick={() => doctorWorkspace.claim(v.id)}>Take consultation</Button> : <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setSelectedId(v.id)}><FileText className="h-4 w-4 me-2" />Notes & prescription</Button><Button onClick={() => navigate(`${demoCallPath("doctor")}&visit=${encodeURIComponent(v.id)}`)}><Video className="h-4 w-4 me-2" />{v.status === "in_progress" ? "Return to call" : "Start video"}</Button></div>}</div>
+    <div className="flex flex-wrap justify-between items-center gap-3 border-t pt-4"><span className="text-xs text-muted-foreground">{new Date(v.createdAt).toLocaleString()}</span>{v.status === "pending" ? <Button disabled={!state.available} onClick={() => { if (!doctorWorkspace.claim(v.id)) toast.error("Consultation is no longer available"); }}>Take consultation</Button> : <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setSelectedId(v.id)}><FileText className="h-4 w-4 me-2" />Notes & prescription</Button><Button onClick={() => navigate(`${demoCallPath("doctor")}&visit=${encodeURIComponent(v.id)}`)}><Video className="h-4 w-4 me-2" />{v.status === "in_progress" ? "Return to call" : "Start video"}</Button></div>}</div>
   </Card>;
   return <div className="min-h-screen bg-background">
     <header className="border-b bg-card"><div className="container px-4 py-4 flex flex-wrap justify-between items-center gap-3"><h1 className="text-2xl font-bold text-primary">DocNow · Doctors</h1><div className="flex items-center gap-2"><LanguageSwitcher /><Button variant="ghost" size="sm" onClick={() => navigate("/auth")}><LogOut className="h-4 w-4 me-2" />Log out</Button></div></div></header>

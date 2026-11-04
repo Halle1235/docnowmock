@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +38,8 @@ const LiveDoctorDashboard = () => {
   const [userEmail, setUserEmail] = useState("");
   const [journalId, setJournalId] = useState<string | null>(null);
   const [claimingId, setClaimingId] = useState<string | null>(null);
+  const claimInFlight = useRef(false);
+  const [historySearch, setHistorySearch] = useState("");
 
   useEffect(() => {
     if (MOCK_LOGIN_ENABLED) {
@@ -111,10 +113,12 @@ const LiveDoctorDashboard = () => {
   };
 
   const claimConsultation = async (consultationId: string) => {
+    if (claimInFlight.current) return;
     if (MOCK_LOGIN_ENABLED) {
       setConsultations((cs) => cs.map((c) => c.id === consultationId ? { ...c, status: "claimed" } : c));
       return;
     }
+    claimInFlight.current = true;
     setClaimingId(consultationId);
 
     try {
@@ -133,11 +137,13 @@ const LiveDoctorDashboard = () => {
       loadConsultations();
     } catch (error: any) {
       toast({
-        title: t('dashboard.couldNotAssign'),
-        description: error.message,
+        title: error.code === "40001" ? "Consultation already taken" : t('dashboard.couldNotAssign'),
+        description: error.code === "40001" ? "Another doctor has taken this booking. The queue has been refreshed." : error.message,
         variant: "destructive",
       });
+      await loadConsultations();
     } finally {
+      claimInFlight.current = false;
       setClaimingId(null);
     }
   };
@@ -259,7 +265,7 @@ const LiveDoctorDashboard = () => {
 
                         <Button
                           onClick={() => claimConsultation(consultation.id)}
-                          disabled={claimingId === consultation.id}
+                          disabled={claimingId !== null}
                           className="ml-4"
                         >
                           {claimingId === consultation.id ? t('dashboard.assigning') : t('dashboard.takeConsultation')}
@@ -272,6 +278,7 @@ const LiveDoctorDashboard = () => {
           </div>
 
           <div>
+            <div className="mb-4"><label htmlFor="live-history-search" className="text-sm font-medium">Search patient history</label><input id="live-history-search" className="mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={historySearch} onChange={e => setHistorySearch(e.target.value)} placeholder="Patient name" /></div>
             <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-primary" />
               {t('dashboard.myConsultationsTitle')} ({consultations.filter(c => c.status !== 'pending').length})
@@ -284,7 +291,7 @@ const LiveDoctorDashboard = () => {
                 </Card>
               ) : (
                 consultations
-                  .filter(c => c.status !== 'pending')
+                  .filter(c => c.status !== 'pending' && (c.profiles?.full_name || "").toLocaleLowerCase().includes(historySearch.trim().toLocaleLowerCase()))
                   .map((consultation) => (
                     <Card key={consultation.id} className="p-6">
                       <div className="flex items-start justify-between">
