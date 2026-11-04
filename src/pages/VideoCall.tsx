@@ -6,7 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2, PhoneOff } from "lucide-react";
 import { toast } from "sonner";
-import CallNotesPanel from "@/components/CallNotesPanel";
 
 const VideoCall = () => {
   const { consultationId } = useParams<{ consultationId: string }>();
@@ -19,19 +18,6 @@ const VideoCall = () => {
   const [searchParams] = useSearchParams();
   const isDemo = MOCK_LOGIN_ENABLED && consultationId === DEMO_CALL_ID;
   const demoRole: "doctor" | "patient" = searchParams.get("as") === "doctor" ? "doctor" : "patient";
-  const [isDoctor, setIsDoctor] = useState(false);
-
-  useEffect(() => {
-    if (isDemo) { setIsDoctor(demoRole === "doctor"); return; }
-    if (!consultationId) return;
-    // Only the assigned doctor sees the notes panel; database rules also limit who can save.
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const { data } = await supabase.from("consultations").select("doctor_id").eq("id", consultationId).maybeSingle();
-      setIsDoctor(!!data && data.doctor_id === session.user.id);
-    })();
-  }, [isDemo, demoRole, consultationId]);
 
   useEffect(() => {
     if (!consultationId) {
@@ -268,8 +254,7 @@ const VideoCall = () => {
         </div>
       </header>
 
-      <div className="flex flex-1 min-h-0 flex-col md:flex-row">
-      <main className="flex-1 relative bg-black min-h-[50vh]">
+      <main className="flex-1 relative bg-black">
         <div ref={containerRef} className="absolute inset-0" />
 
         {loading && (
@@ -293,12 +278,6 @@ const VideoCall = () => {
           </div>
         )}
       </main>
-      {isDoctor && (
-        <div className="md:w-96 md:h-[calc(100vh-57px)]">
-          <CallNotesPanel consultationId={isDemo ? null : consultationId ?? null} />
-        </div>
-      )}
-      </div>
     </div>
   );
 };

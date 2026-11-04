@@ -1,20 +1,5 @@
 {
   "version": "7",
   "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1793758736102,
-      "tag": "0000_patient_allergies_and_doctor_view",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1793759150520,
-      "tag": "0001_notes_only_by_assigned_doctor",
-      "breakpoints": true
-    }
-  ]
+  "entries": []
 }

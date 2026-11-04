@@ -17,7 +17,6 @@ const Registration = () => {
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [allergies, setAllergies] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,8 +36,7 @@ const Registration = () => {
       dateOfBirth,
       passportNumber,
       email,
-      phone,
-      allergies: allergies.trim().slice(0, 500),
+      phone
     };
     sessionStorage.setItem("registrationData", JSON.stringify(formData));
     
@@ -148,18 +146,6 @@ const Registration = () => {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   required
-                  className="h-12"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="allergies">Allergies (optional)</Label>
-                <Input
-                  id="allergies"
-                  placeholder="e.g. Penicillin, peanuts. Leave empty if none"
-                  value={allergies}
-                  maxLength={500}
-                  onChange={(e) => setAllergies(e.target.value)}
                   className="h-12"
                 />
               </div>

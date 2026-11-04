@@ -32,7 +32,7 @@ export const SAMPLE_CONSULTATION = {
   payment_status: "paid",
   payment_amount: 249,
   created_at: new Date().toISOString(),
-  reason_category: "respiratory" as string | undefined,
-  reason_description: "Sore throat and mild fever for two days",
-  profiles: { full_name: "Sample patient", phone: "+971 50 000 0000", age: 34, allergies: "Penicillin" },
+  reason_category: undefined as string | undefined,
+  reason_description: "Sample patient · sore throat for two days",
+  profiles: { full_name: "Sample patient", phone: "+971 50 000 0000" },
 };

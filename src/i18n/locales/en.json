@@ -101,9 +101,7 @@
     "startingVideo": "Starting video call",
     "videoComingSoon": "Video functionality coming soon",
     "couldNotLoad": "Could not load consultations",
-    "loading": "Loading...",
-    "reason": "Reason",
-    "symptoms": "Symptoms"
+    "loading": "Loading..."
   },
   "registration": {
     "title": "Identity Verification",

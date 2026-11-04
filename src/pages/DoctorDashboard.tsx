@@ -9,8 +9,6 @@ import { Clock, User, LogOut, Video, CheckCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import VisitSummaryDialog from "@/components/VisitSummaryDialog";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { MOCK_LOGIN_ENABLED, SAMPLE_CONSULTATION, demoCallPath } from "@/lib/mock-login";
 
 interface Consultation {
@@ -25,8 +23,6 @@ interface Consultation {
   profiles: {
     full_name: string;
     phone: string;
-    age?: number | null;
-    allergies?: string | null;
   };
 }
 
@@ -38,40 +34,6 @@ const DoctorDashboard = () => {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [userEmail, setUserEmail] = useState("");
   const [claimingId, setClaimingId] = useState<string | null>(null);
-  const [isOnline, setIsOnline] = useState(true);
-  const [savingOnline, setSavingOnline] = useState(false);
-
-  useEffect(() => {
-    if (MOCK_LOGIN_ENABLED) return;
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const { data } = await supabase
-        .from("doctor_profiles")
-        .select("is_available")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-      if (data) setIsOnline(data.is_available !== false);
-    })();
-  }, []);
-
-  const toggleOnline = async (next: boolean) => {
-    if (MOCK_LOGIN_ENABLED) { setIsOnline(next); return; }
-    setSavingOnline(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { setSavingOnline(false); return; }
-    // Database rules only let a doctor change their own row.
-    const { error } = await supabase
-      .from("doctor_profiles")
-      .update({ is_available: next })
-      .eq("user_id", session.user.id);
-    setSavingOnline(false);
-    if (error) {
-      toast({ title: "Could not update your status", description: error.message, variant: "destructive" });
-      return;
-    }
-    setIsOnline(next);
-  };
 
   useEffect(() => {
     if (MOCK_LOGIN_ENABLED) {
@@ -141,15 +103,26 @@ const DoctorDashboard = () => {
 
       if (error) throw error;
 
-      // Patient details come from a limited, server-checked lookup: only for
-      // consultations this doctor can see, and never passport or full birth date.
-      const merged = await Promise.all((data || []).map(async (c: any) => {
-        const { data: p } = await supabase.rpc('get_consultation_patient', { _consultation_id: c.id });
-        const info = (p ?? {}) as { full_name?: string; phone?: string; age?: number | null; allergies?: string | null };
-        return {
-          ...c,
-          profiles: { full_name: info.full_name || '', phone: info.phone || '', age: info.age ?? null, allergies: info.allergies ?? null },
-        };
+      const patientIds = Array.from(new Set((data || []).map((c: any) => c.patient_id)));
+      let profilesMap: Record<string, { full_name: string; phone: string }> = {};
+
+      if (patientIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, phone')
+          .in('id', patientIds);
+
+        if (profilesError) throw profilesError;
+
+        profilesMap = (profilesData || []).reduce((acc: any, p: any) => {
+          acc[p.id] = { full_name: p.full_name, phone: p.phone };
+          return acc;
+        }, {});
+      }
+
+      const merged = (data || []).map((c: any) => ({
+        ...c,
+        profiles: profilesMap[c.patient_id] || { full_name: '', phone: '' },
       }));
 
       setConsultations(merged as any);
@@ -244,18 +217,6 @@ const DoctorDashboard = () => {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-primary">{t('header.doctors')}</h1>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="online-switch"
-                  checked={isOnline}
-                  disabled={savingOnline}
-                  onCheckedChange={toggleOnline}
-                  aria-label="Available for new patients"
-                />
-                <Label htmlFor="online-switch" className="text-sm">
-                  {isOnline ? "Online" : "Offline"}
-                </Label>
-              </div>
               <LanguageSwitcher />
               <span className="text-sm text-muted-foreground">{userEmail}</span>
               <Button variant="ghost" size="sm" onClick={handleLogout}>
@@ -275,12 +236,6 @@ const DoctorDashboard = () => {
               {t('dashboard.subtitle')}
             </p>
           </div>
-
-          {!isOnline && (
-            <Card className="mb-6 p-4 text-sm text-muted-foreground">
-              You're offline. You won't be counted as available and can't take new patients until you go online.
-            </Card>
-          )}
 
           <div className="mb-8">
             <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
@@ -307,16 +262,6 @@ const DoctorDashboard = () => {
                               <p className="text-sm text-muted-foreground">
                                 {t('dashboard.phone')}: {consultation.profiles?.phone || t('dashboard.notProvided')}
                               </p>
-                              <p className="text-sm text-muted-foreground">
-                                Age: {consultation.profiles?.age ?? "Not provided"}
-                                {" · "}
-                                Allergies:{" "}
-                                {consultation.profiles?.allergies ? (
-                                  <span className="font-medium text-destructive">{consultation.profiles.allergies}</span>
-                                ) : (
-                                  "None reported"
-                                )}
-                              </p>
                             </div>
                           </div>
                           
@@ -342,8 +287,7 @@ const DoctorDashboard = () => {
 
                         <Button
                           onClick={() => claimConsultation(consultation.id)}
-                          disabled={claimingId === consultation.id || !isOnline}
-                          title={!isOnline ? "Go online to take new patients" : undefined}
+                          disabled={claimingId === consultation.id}
                           className="ml-4"
                         >
                           {claimingId === consultation.id ? t('dashboard.assigning') : t('dashboard.takeConsultation')}
@@ -379,16 +323,6 @@ const DoctorDashboard = () => {
                               <h4 className="font-semibold">{consultation.profiles?.full_name || t('dashboard.patient')}</h4>
                               <p className="text-sm text-muted-foreground">
                                 {t('dashboard.phone')}: {consultation.profiles?.phone || t('dashboard.notProvided')}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                Age: {consultation.profiles?.age ?? "Not provided"}
-                                {" · "}
-                                Allergies:{" "}
-                                {consultation.profiles?.allergies ? (
-                                  <span className="font-medium text-destructive">{consultation.profiles.allergies}</span>
-                                ) : (
-                                  "None reported"
-                                )}
                               </p>
                             </div>
                             {getStatusBadge(consultation.status)}
