@@ -1,17 +1,18 @@
-import { describe, expect, test } from "bun:test";
+import { describe, test } from "node:test";
+import { strict as assert } from "node:assert";
 import { isMockRole, MOCK_LOGIN_ENABLED, mockLoginDestination } from "./mock-login";
 
 describe("temporary mock logins", () => {
   test("logins use mock mode for now", () => {
-    expect(MOCK_LOGIN_ENABLED).toBe(true);
+    assert.equal(MOCK_LOGIN_ENABLED, true);
   });
   for (const role of ["patient", "doctor", "admin"] as const) {
     test(`${role} login leads only to its demo screen`, () => {
-      expect(mockLoginDestination(role)).toBe(`/demo/${role}`);
+      assert.equal(mockLoginDestination(role), `/demo/${role}`);
     });
   }
   test("unknown roles are not accepted", () => {
-    expect(isMockRole("owner")).toBe(false);
-    expect(isMockRole(undefined)).toBe(false);
+    assert.equal(isMockRole("owner"), false);
+    assert.equal(isMockRole(undefined), false);
   });
 });
