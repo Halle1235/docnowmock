@@ -172,6 +172,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          allergies: string | null
           created_at: string | null
           date_of_birth: string | null
           email: string
@@ -182,6 +183,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          allergies?: string | null
           created_at?: string | null
           date_of_birth?: string | null
           email: string
@@ -192,6 +194,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          allergies?: string | null
           created_at?: string | null
           date_of_birth?: string | null
           email?: string
@@ -255,6 +258,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_consultation_patient: {
+        Args: { _consultation_id: string }
+        Returns: Json
+      }
       get_queue_status: { Args: { _consultation_id: string }; Returns: Json }
       has_role: {
         Args: {
