@@ -33,11 +33,11 @@ let snapshot = {
 const listeners = new Set<() => void>();
 function emit(next: typeof snapshot) { if (!MOCK_LOGIN_ENABLED) return; snapshot = next; listeners.forEach(fn => fn()); }
 export const patientWorkspace = {
-  bookSample: () => {
+  bookSample: (reason = "Sore throat", shared = false) => {
     if (!MOCK_LOGIN_ENABLED) return false;
-    const visit: PatientVisit = { id: "sample-1", reason: "Sore throat", doctor: "", createdAt: Date.now(), status: "waiting", prescriptions: [], amount: SAMPLE_VISIT_PRICE };
+    const visit: PatientVisit = { id: "sample-1", reason: reason.slice(0, 300), doctor: "", createdAt: Date.now(), status: "waiting", prescriptions: [], amount: SAMPLE_VISIT_PRICE };
     emit({ ...snapshot, visits: [...snapshot.visits.filter(v => v.id !== "sample-1"), visit] });
-    sampleBooking.book(); return true;
+    if (!shared) sampleBooking.book(); return true;
   },
   getSnapshot: () => snapshot,
   subscribe: (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; },
