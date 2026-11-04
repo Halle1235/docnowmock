@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, LogOut, Shield, Stethoscope, User, Video } from "lucide-react";
@@ -12,6 +14,18 @@ const views = {
 export default function MockDashboard() {
   const { role } = useParams();
   const navigate = useNavigate();
+  const [doctorInCall, setDoctorInCall] = useState(false);
+  useEffect(() => {
+    if (role !== "patient") return;
+    let active = true;
+    const check = async () => {
+      const { data } = await supabase.functions.invoke("demo-call-room", { body: { action: "status" } });
+      if (active) setDoctorInCall(!!data?.doctorInCall);
+    };
+    check();
+    const id = setInterval(check, 4000);
+    return () => { active = false; clearInterval(id); };
+  }, [role]);
   if (!isMockRole(role)) return <Navigate to="/auth" replace />;
   const view = views[role];
   const Icon = view.icon;
@@ -43,9 +57,14 @@ export default function MockDashboard() {
               <p className="text-sm text-muted-foreground">{view.detail}</p>
             </div>
             {role !== "admin" && (
-              <Button className="ml-auto" onClick={() => navigate(`/demo/call?as=${role}`)}>
-                <Video className="mr-2 h-4 w-4" />{role === "doctor" ? "Start call" : "Join call"}
-              </Button>
+              <div className="ml-auto flex flex-col items-end gap-1">
+                <Button disabled={role === "patient" && !doctorInCall} onClick={() => navigate(`/demo/call?as=${role}`)}>
+                  <Video className="mr-2 h-4 w-4" />{role === "doctor" ? "Start call" : "Join call"}
+                </Button>
+                {role === "patient" && !doctorInCall && (
+                  <span className="text-xs text-muted-foreground">Waiting for the doctor to start…</span>
+                )}
+              </div>
             )}
           </article>
         </section>

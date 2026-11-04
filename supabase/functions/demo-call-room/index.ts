@@ -15,6 +15,21 @@ Deno.serve(async (req) => {
     const role = body.role === "doctor" ? "doctor" : "patient";
     const now = Math.floor(Date.now() / 1000);
 
+    if (body.action === "status") {
+      const p = await fetch(`https://api.daily.co/v1/rooms/${ROOM}/presence`, { headers: h });
+      if (!p.ok) return json({ doctorInCall: false });
+      const pj = await p.json();
+      const doctorInCall = (pj.data ?? []).some((u: { userName?: string }) => u.userName === "Doctor (demo)");
+      return json({ doctorInCall });
+    }
+    if (role === "patient") {
+      const p = await fetch(`https://api.daily.co/v1/rooms/${ROOM}/presence`, { headers: h });
+      const pj = p.ok ? await p.json() : { data: [] };
+      if (!(pj.data ?? []).some((u: { userName?: string }) => u.userName === "Doctor (demo)")) {
+        return json({ error: "The doctor hasn't started the call yet." }, 409);
+      }
+    }
+
     let room = await fetch(`https://api.daily.co/v1/rooms/${ROOM}`, { headers: h });
     let data = room.ok ? await room.json() : null;
     const exp = data?.config?.exp as number | undefined;
