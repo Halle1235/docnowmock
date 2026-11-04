@@ -9,6 +9,8 @@ import { Clock, User, LogOut, Video, CheckCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import VisitSummaryDialog from "@/components/VisitSummaryDialog";
+import PatientJournal from "@/components/PatientJournal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import DoctorWorkspace from "@/components/DoctorWorkspace";
 import { MOCK_LOGIN_ENABLED, SAMPLE_CONSULTATION, demoCallPath } from "@/lib/mock-login";
 
@@ -34,6 +36,7 @@ const LiveDoctorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [userEmail, setUserEmail] = useState("");
+  const [journalId, setJournalId] = useState<string | null>(null);
   const [claimingId, setClaimingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -138,6 +141,13 @@ const LiveDoctorDashboard = () => {
       setClaimingId(null);
     }
   };
+
+  useEffect(() => {
+    const refresh = () => { void loadConsultations(); };
+    window.addEventListener("focus", refresh);
+    const timer = window.setInterval(refresh, 15000);
+    return () => { window.removeEventListener("focus", refresh); window.clearInterval(timer); };
+  }, []);
 
   const startVideo = (consultationId: string) => {
     navigate(MOCK_LOGIN_ENABLED ? demoCallPath("doctor") : `/call/${consultationId}`);
@@ -309,7 +319,7 @@ const LiveDoctorDashboard = () => {
                           </div>
                         </div>
 
-                        <div className="ml-4 flex flex-col gap-2 items-end">
+                        <div className="ml-4 flex flex-col gap-2 items-end"><Button variant="outline" onClick={() => setJournalId(consultation.id)}>Patient journal</Button>
                           {consultation.status === 'claimed' && (
                             <Button onClick={() => startVideo(consultation.id)}>
                               <Video className="h-4 w-4 mr-2" />
@@ -331,6 +341,7 @@ const LiveDoctorDashboard = () => {
           </div>
         </div>
       </div>
+      <Dialog open={!!journalId} onOpenChange={open => { if (!open) setJournalId(null); }}><DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto" aria-describedby={undefined}><DialogHeader><DialogTitle>Patient medical journal</DialogTitle></DialogHeader>{journalId && <PatientJournal key={journalId} consultationId={journalId} canAdd={consultations.some(c => c.id === journalId && ["claimed", "in_progress"].includes(c.status))} />}</DialogContent></Dialog>
     </div>
   );
 };
