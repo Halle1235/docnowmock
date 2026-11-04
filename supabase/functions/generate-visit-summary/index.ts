@@ -53,26 +53,23 @@ Deno.serve(async (req) => {
     if (!/^[0-9a-f-]{36}$/i.test(consultationId)) return json({ error: "Invalid consultationId" }, 400);
 
     const admin = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { data: consult } = await admin
-      .from("consultations")
-      .select("id, doctor_id, reason_category, reason_description, prescription")
-      .eq("id", consultationId)
-      .maybeSingle();
-    if (!consult) return json({ error: "Consultation not found" }, 404);
+    const { data: consult, error: consultError } = await userClient.rpc("get_authorized_call_record", { _consultation_id: consultationId });
+    if (consultError || !consult) return json({ error: "Consultation access denied" }, 403);
     if (consult.doctor_id !== userData.user.id) return json({ error: "Only the assigned doctor can do this" }, 403);
 
     if (body.action === "approve") {
-      const { data: draft } = await admin
-        .from("visit_summary_drafts").select("summary").eq("consultation_id", consultationId).maybeSingle();
+      const { data: draft, error: draftError } = await userClient.rpc("get_authorized_summary_draft", { _consultation_id: consultationId });
+      if (draftError) return json({ error: "Draft access denied" }, 403);
       if (!draft) return json({ error: "There is no summary waiting for review." }, 400);
-      const { error: apErr } = await admin.from("consultations").update({
-        visit_summary: draft.summary,
+      const { error: apErr } = await userClient.from("consultations").update({
+        visit_summary: draft,
         visit_summary_approved_at: new Date().toISOString(),
         visit_summary_approved_by: userData.user.id,
       }).eq("id", consultationId);
       if (apErr) return json({ error: "Could not approve summary" }, 500);
-      await admin.from("visit_summary_drafts").delete().eq("consultation_id", consultationId);
-      return json({ summary: draft.summary, approved: true }, 200);
+      const { error: deleteError } = await userClient.from("visit_summary_drafts").delete().eq("consultation_id", consultationId);
+      if (deleteError) return json({ error: "Could not clear approved draft" }, 500);
+      return json({ summary: draft, approved: true }, 200);
     }
 
     if (notes.length < 10) return json({ error: "Please write more detailed notes first." }, 400);
@@ -147,15 +144,15 @@ ${notes}
 
     // Save as a private draft; patients only see it after the doctor approves it
     const now = new Date().toISOString();
-    const { error: draftErr } = await admin
+    const { error: draftErr } = await userClient
       .from("visit_summary_drafts")
       .upsert({ consultation_id: consultationId, summary, generated_at: now });
-    if (draftErr) console.error("Draft save error", draftErr);
-    const { error: updErr } = await admin
+    if (draftErr) return json({ error: "Could not save summary draft" }, 500);
+    const { error: updErr } = await userClient
       .from("consultations")
       .update({ notes, visit_summary_generated_at: now })
       .eq("id", consultationId);
-    if (updErr) console.error("Save error", updErr);
+    if (updErr) return json({ error: "Could not save notes" }, 500);
 
     return json({ summary, approved: false }, 200, extra);
   } catch (e) {

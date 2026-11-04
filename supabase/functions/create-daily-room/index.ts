@@ -43,15 +43,11 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { data: consult, error: consultErr } = await admin
-      .from("consultations")
-      .select("id, doctor_id, patient_id, room_url")
-      .eq("id", consultationId)
-      .maybeSingle();
+    const { data: consult, error: consultErr } = await userClient.rpc("get_authorized_call_record", { _consultation_id: consultationId });
 
     if (consultErr || !consult) {
       return new Response(JSON.stringify({ error: "Consultation not found" }), {
-        status: 404,
+        status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -64,6 +60,11 @@ Deno.serve(async (req) => {
     }
 
     const isDoctor = consult.doctor_id === userData.user.id;
+    if (!["claimed", "in_progress"].includes(consult.status)) {
+      return new Response(JSON.stringify({ error: "Consultation is not active" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const makeToken = async (roomName: string) => {
       const r = await fetch("https://api.daily.co/v1/meeting-tokens", {
         method: "POST",
@@ -133,13 +134,13 @@ Deno.serve(async (req) => {
 
     const url = dailyData.url as string;
 
-    const { error: updErr } = await admin
+    const { error: updErr } = await userClient
       .from("consultations")
       .update({ room_url: url, status: "in_progress" })
       .eq("id", consultationId);
 
     if (updErr) {
-      console.error("Update error", updErr);
+      throw new Error("Could not save the call room");
     }
 
     const token = await makeToken(dailyData.name);
