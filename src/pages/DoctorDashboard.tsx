@@ -25,6 +25,8 @@ interface Consultation {
   profiles: {
     full_name: string;
     phone: string;
+    age?: number | null;
+    allergies?: string | null;
   };
 }
 
@@ -139,26 +141,15 @@ const DoctorDashboard = () => {
 
       if (error) throw error;
 
-      const patientIds = Array.from(new Set((data || []).map((c: any) => c.patient_id)));
-      let profilesMap: Record<string, { full_name: string; phone: string }> = {};
-
-      if (patientIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, full_name, phone')
-          .in('id', patientIds);
-
-        if (profilesError) throw profilesError;
-
-        profilesMap = (profilesData || []).reduce((acc: any, p: any) => {
-          acc[p.id] = { full_name: p.full_name, phone: p.phone };
-          return acc;
-        }, {});
-      }
-
-      const merged = (data || []).map((c: any) => ({
-        ...c,
-        profiles: profilesMap[c.patient_id] || { full_name: '', phone: '' },
+      // Patient details come from a limited, server-checked lookup: only for
+      // consultations this doctor can see, and never passport or full birth date.
+      const merged = await Promise.all((data || []).map(async (c: any) => {
+        const { data: p } = await supabase.rpc('get_consultation_patient', { _consultation_id: c.id });
+        const info = (p ?? {}) as { full_name?: string; phone?: string; age?: number | null; allergies?: string | null };
+        return {
+          ...c,
+          profiles: { full_name: info.full_name || '', phone: info.phone || '', age: info.age ?? null, allergies: info.allergies ?? null },
+        };
       }));
 
       setConsultations(merged as any);
