@@ -89,7 +89,7 @@ export const doctorWorkspace = {
     emit({ ...snapshot, visits: [...snapshot.visits, { ...sampleVisit(crypto.randomUUID(), Date.now()), name: `Sample patient ${snapshot.visits.length + 1}`, reason: "Seasonal allergies", allergies: "Not reported", symptoms: "Sneezing and itchy eyes (sample)" }] });
   },
   claim: (id: string) => {
-    if (!MOCK_LOGIN_ENABLED || !snapshot.available || !snapshot.visits.some(v => v.id === id && v.status === "pending")) return false;
+    if (!MOCK_LOGIN_ENABLED || !snapshot.available || !snapshot.visits.some(v => v.id === id && v.status === "pending" && !v.testBooking)) return false;
     updateVisit(id, v => v.status === "pending" ? { ...v, status: "claimed" } : v);
     notifySampleAcceptance(id);
     sampleBooking.accept(id);
