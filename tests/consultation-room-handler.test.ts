@@ -106,3 +106,7 @@ test("completed consultations do not issue room credentials", async () => {
   const result = await requestAs(doctorA, { ...roomA, status: "completed" });
   assert.equal(result.status, 403); assert.deepEqual(result.calls, []);
 });
+test("invalid consultation identifiers never reach authorization or the video provider", async () => {
+  const result = await requestAs(doctorA, roomA, { consultationId: "another-room" });
+  assert.equal(result.status, 400); assert.deepEqual(result.rpcIds, []); assert.deepEqual(result.calls, []);
+});
