@@ -341,7 +341,7 @@ const LiveDoctorDashboard = () => {
           </div>
         </div>
       </div>
-      <Dialog open={!!journalId} onOpenChange={open => { if (!open) setJournalId(null); }}><DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto" aria-describedby={undefined}><DialogHeader><DialogTitle>Patient medical journal</DialogTitle></DialogHeader>{journalId && <PatientJournal key={journalId} consultationId={journalId} canAdd={consultations.some(c => c.id === journalId && ["claimed", "in_progress"].includes(c.status))} />}</DialogContent></Dialog>
+      <Dialog open={!!journalId} onOpenChange={open => { if (!open) setJournalId(null); }}><DialogContent className="w-[calc(100%-2rem)] max-w-xl max-h-[90vh] overflow-y-auto" aria-describedby={undefined}><DialogHeader><DialogTitle>Patient medical journal</DialogTitle></DialogHeader>{journalId && <PatientJournal key={journalId} consultationId={journalId} canAdd={consultations.some(c => c.id === journalId && ["claimed", "in_progress"].includes(c.status))} />}</DialogContent></Dialog>
     </div>
   );
 };
