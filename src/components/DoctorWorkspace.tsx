@@ -12,10 +12,12 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ClinicalNotesPanel from "@/components/ClinicalNotesPanel";
 import { dailyStats, doctorWorkspace, isLongWait, patientAge, searchHistory, useDoctorWorkspace, waitMinutes, type DoctorVisit } from "@/lib/doctor-workspace";
 import { demoCallPath } from "@/lib/mock-login";
+import { usePatientWorkspace } from "@/lib/patient-workspace";
 
 export default function DoctorWorkspace() {
   const navigate = useNavigate();
   const state = useDoctorWorkspace();
+  const patient = usePatientWorkspace();
   const [now, setNow] = useState(Date.now());
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export default function DoctorWorkspace() {
   const active = state.visits.filter(v => v.status === "claimed" || v.status === "in_progress");
   const history = searchHistory(state.visits, search);
   const selected = state.visits.find(v => v.id === selectedId);
-  const details = (v: DoctorVisit) => <div className="space-y-2 text-sm"><p><span className="font-medium">Reason:</span> {v.reason}</p><p><span className="font-medium">Symptoms:</span> {v.symptoms}</p><div className="flex flex-wrap gap-x-6 gap-y-1"><p><span className="font-medium">Age:</span> {patientAge(v.dateOfBirth) ?? "Not reported"}</p><p><span className="font-medium">Allergies:</span> {v.allergies || "Not reported"}</p></div></div>;
+  const details = (v: DoctorVisit) => <div className="space-y-2 text-sm break-words"><p><span className="font-medium">Reason:</span> {v.reason}</p><p><span className="font-medium">Symptoms:</span> {v.symptoms}</p><div className="flex flex-wrap gap-x-6 gap-y-1"><p><span className="font-medium">Age:</span> {patientAge(v.dateOfBirth) ?? "Not reported"}</p><p><span className="font-medium">Allergies:</span> {v.id === "sample-1" ? patient.profile.allergies || "Not reported" : v.allergies || "Not reported"}</p></div>{v.id === "sample-1" && <><p><span className="font-medium">Current medicines:</span> {patient.profile.medicines || "Not reported"}</p><p><span className="font-medium">Long-term conditions:</span> {patient.profile.conditions || "Not reported"}</p></>}</div>;
   const visitCard = (v: DoctorVisit) => <Card key={v.id} className={`p-5 rounded-lg space-y-4 ${v.status === "pending" && isLongWait(v, now) ? "border-destructive" : ""}`}>
     <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">{v.name}</h3><Badge variant={v.status === "pending" && isLongWait(v, now) ? "destructive" : "outline"}>{v.status === "pending" ? `Waiting ${waitMinutes(v, now)} min` : v.status === "in_progress" ? "In call" : "Assigned"}</Badge></div>
     {details(v)}

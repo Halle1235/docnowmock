@@ -15,6 +15,8 @@ export default function ClinicalNotesPanel({ visit }: { visit: DoctorVisit }) {
   const [frequency, setFrequency] = useState("");
   const [duration, setDuration] = useState("");
   const [dirty, setDirty] = useState(false);
+  const [followUpDate, setFollowUpDate] = useState(visit.followUpDate ?? "");
+  const [followUpReason, setFollowUpReason] = useState(visit.followUpReason ?? "");
   // Keep clinical edits in the in-memory workspace even if this panel closes.
   useEffect(() => {
     if (dirty) doctorWorkspace.saveDraft(visit.id, notes, prescriptions);
@@ -45,6 +47,7 @@ export default function ClinicalNotesPanel({ visit }: { visit: DoctorVisit }) {
         <ul className="divide-y">{prescriptions.map((p, i) => <li key={i} className="flex gap-2 py-3 items-start"><div className="flex-1 min-w-0 text-sm break-words"><strong>{p.medicine}</strong><p>{p.dose} · {p.frequency} · {p.duration}</p></div><Button variant="ghost" size="icon" aria-label={`Remove ${p.medicine}`} title="Remove medicine" onClick={() => { setPrescriptions(prescriptions.filter((_, index) => index !== i)); setDirty(true); }}><Trash2 className="h-4 w-4" /></Button></li>)}</ul>
       </div>
       <Button onClick={save} disabled={!dirty || !!medicine || !!dose || !!frequency || !!duration} className="w-full"><Save className="h-4 w-4 me-2" />Save draft</Button>
+      <div className="border-t pt-4 space-y-3"><h3 className="font-semibold">Suggested follow-up</h3><div className="space-y-1"><Label htmlFor="follow-up-date">Check-up date</Label><Input id="follow-up-date" type="date" min={new Date().toISOString().slice(0, 10)} value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} /></div><div className="space-y-1"><Label htmlFor="follow-up-reason">Reason for check-up</Label><Textarea id="follow-up-reason" rows={2} maxLength={500} value={followUpReason} onChange={e => setFollowUpReason(e.target.value)} /></div><Button variant="outline" disabled={!followUpDate || !followUpReason.trim()} onClick={() => { if (doctorWorkspace.saveFollowUp(visit.id, followUpDate, followUpReason)) toast.success("Sample follow-up saved"); else toast.error("Choose a valid future check-up date"); }}>Save follow-up</Button></div>
       <p className="text-xs text-muted-foreground" role="status">Draft retained until refresh{medicine || dose || frequency || duration ? " · Medicine not added yet" : ""}</p>
     </section>
   );
