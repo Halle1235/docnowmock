@@ -1,4 +1,5 @@
 # Tasks
+- [x] Connect mock payment to the fixed fictional doctor queue and show a doctor name only after acceptance; 16 focused tests pass, same-browser two-tab payment/claim/name readback verified without auth or database requests. Actual patient identity and separate-device booking remain unavailable in mock mode.
 - [x] Expand Amina's fictional journal from September 4 to November 4 and add in-app doctor arrival / patient acceptance alerts; 26 focused tests pass in isolated runs, browser verifies cross-tab sample acceptance and 360px layout, latest build OK.
 - [ ] Verify booking alerts with real doctor/patient accounts — blocked by mock-only login mode and no verified doctor account; live alerts use existing authorized reads, sample alerts work across open same-browser tabs only, not separate devices or closed pages.
 - [x] Inspect deployed atomic claiming, improve competing-claim feedback, and verify three named sample patients with searchable journal history; 21 focused tests and browser checks pass.

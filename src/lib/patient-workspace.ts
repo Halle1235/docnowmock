@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { MOCK_LOGIN_ENABLED } from "./mock-login";
 import { type PrescriptionDraft, validPrescription } from "./doctor-workspace";
+import { sampleBooking } from "./sample-booking";
 
 export interface HealthProfile { allergies: string; medicines: string; conditions: string }
 export interface PatientVisit {
@@ -25,13 +26,19 @@ const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 2);
 let snapshot = {
   profile: { allergies: "Penicillin (sample)", medicines: "None reported (sample)", conditions: "None reported (sample)" } as HealthProfile,
   visits: [
-    { id: "sample-1", reason: "Sore throat", doctor: "Dr. Alex Morgan", createdAt: Date.now() - 7 * 60000, status: "waiting", prescriptions: [], amount: SAMPLE_VISIT_PRICE },
+    { id: "sample-1", reason: "Sore throat", doctor: "", createdAt: Date.now() - 7 * 60000, status: "waiting", prescriptions: [], amount: SAMPLE_VISIT_PRICE },
     { id: "sample-past", reason: "General consultation", doctor: "Dr. Alex Morgan", createdAt: Date.now() - 86400000, status: "completed", prescriptions: [], amount: SAMPLE_VISIT_PRICE, followUpDate: tomorrow.toISOString().slice(0, 10), followUpReason: "Sample check-up suggested by the doctor" },
   ] as PatientVisit[],
 };
 const listeners = new Set<() => void>();
 function emit(next: typeof snapshot) { if (!MOCK_LOGIN_ENABLED) return; snapshot = next; listeners.forEach(fn => fn()); }
 export const patientWorkspace = {
+  bookSample: () => {
+    if (!MOCK_LOGIN_ENABLED) return false;
+    const visit: PatientVisit = { id: "sample-1", reason: "Sore throat", doctor: "", createdAt: Date.now(), status: "waiting", prescriptions: [], amount: SAMPLE_VISIT_PRICE };
+    emit({ ...snapshot, visits: [...snapshot.visits.filter(v => v.id !== "sample-1"), visit] });
+    sampleBooking.book(); return true;
+  },
   getSnapshot: () => snapshot,
   subscribe: (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; },
   saveProfile: (profile: HealthProfile) => { if (!MOCK_LOGIN_ENABLED || !validHealthProfile(profile)) return false; emit({ ...snapshot, profile: { ...profile } }); return true; },

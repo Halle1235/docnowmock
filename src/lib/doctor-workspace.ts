@@ -3,6 +3,7 @@ import { MOCK_LOGIN_ENABLED } from "./mock-login";
 import { sampleJournal } from "./patient-journal";
 import { SAMPLE_PATIENTS } from "./sample-patients";
 import { notifySampleAcceptance } from "./booking-notifications";
+import { sampleBooking } from "./sample-booking";
 
 export interface PrescriptionDraft {
   medicine: string;
@@ -89,6 +90,7 @@ export const doctorWorkspace = {
     if (!MOCK_LOGIN_ENABLED || !snapshot.available || !snapshot.visits.some(v => v.id === id && v.status === "pending")) return false;
     updateVisit(id, v => v.status === "pending" ? { ...v, status: "claimed" } : v);
     notifySampleAcceptance(id);
+    sampleBooking.accept(id);
     return true;
   },
   saveDraft: (id: string, notes: string, prescriptions: PrescriptionDraft[]) => {
@@ -113,6 +115,13 @@ export const doctorWorkspace = {
   },
   finishCall: (id: string, now = Date.now()) => updateVisit(id, v => v.status === "in_progress" && v.startedAt !== undefined ? { ...v, status: "completed", completedAt: now, durationSeconds: Math.max(0, Math.round((now - v.startedAt) / 1000)) } : v),
 };
+sampleBooking.subscribe(() => {
+  // Synchronize only the fixed fictional booking's presentation, never live records.
+  const next = sampleBooking.getSnapshot();
+  const visit = snapshot.visits.find(v => v.id === "sample-1");
+  if (!visit || visit.status === next || (next === "claimed" && visit.status !== "pending")) return;
+  updateVisit("sample-1", v => ({ ...v, status: next, ...(next === "pending" ? { createdAt: Date.now(), startedAt: undefined, completedAt: undefined, notes: "", prescriptions: [] } : {}) }));
+});
 export function useDoctorWorkspace() {
   return useSyncExternalStore(doctorWorkspace.subscribe, doctorWorkspace.getSnapshot, doctorWorkspace.getSnapshot);
 }

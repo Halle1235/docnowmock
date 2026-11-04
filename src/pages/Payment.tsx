@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { supabase } from "@/integrations/supabase/client";
+import { MOCK_LOGIN_ENABLED } from "@/lib/mock-login";
+import { patientWorkspace } from "@/lib/patient-workspace";
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -20,6 +22,13 @@ const Payment = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (MOCK_LOGIN_ENABLED) {
+      patientWorkspace.bookSample();
+      ["registrationData", "medicalReason", "consent"].forEach(key => sessionStorage.removeItem(key));
+      toast({ title: "Simulated payment complete", description: "Fictional booking added to the sample doctor queue. No money charged." });
+      navigate("/waiting-room?id=demo&visit=sample-1");
+      return;
+    }
     
     // TESTING: card number is not validated — any value (or none) is accepted.
     if (!expiryDate || !cvv || !cardName) {
@@ -229,6 +238,8 @@ const Payment = () => {
 
           <div className="bg-card p-8 rounded-xl border shadow-sm">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {MOCK_LOGIN_ENABLED && <p className="text-sm text-muted-foreground">Sample payment · No money charged. No card details needed. Booking uses fictional patient Amina Hassan; your entered details are not sent to doctors.</p>}
+              {!MOCK_LOGIN_ENABLED && <>
               <div className="space-y-2">
                 <Label htmlFor="cardName">{t('payment.cardHolder')} *</Label>
                 <Input
@@ -296,8 +307,9 @@ const Payment = () => {
                 </div>
               </div>
 
+              </>}
               <Button type="submit" className="w-full h-12 text-base" size="lg">
-                {t('payment.payButton')}
+                {MOCK_LOGIN_ENABLED ? "Simulate payment · AED 249" : t('payment.payButton')}
               </Button>
             </form>
           </div>
