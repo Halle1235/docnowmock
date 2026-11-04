@@ -11,6 +11,7 @@ import { usePatientWorkspace } from "@/lib/patient-workspace";
 import BookingNotifications from "@/components/BookingNotifications";
 import { useBookingNotifications } from "@/hooks/use-booking-notifications";
 import { useSampleBooking } from "@/lib/sample-booking";
+import { getTestBooking, isTestBookingId, TEST_BOOKING_KEY, type TestBookingStatus } from "@/lib/test-bookings";
 
 interface ConsultationData { id: string; status: string; room_url?: string | null; reason_description?: string | null }
 interface DoctorInfo { full_name: string; avatar_url?: string; specialization?: string; is_verified?: boolean }
@@ -20,21 +21,29 @@ const WaitingRoom = () => {
   const id = params.get("id"); const isSample = MOCK_LOGIN_ENABLED;
   const workspace = usePatientWorkspace();
   const sampleStatus = useSampleBooking();
+  const bookingParam = params.get("booking") || (typeof sessionStorage !== "undefined" ? sessionStorage.getItem(TEST_BOOKING_KEY) : null);
+  const bookingId = isSample && isTestBookingId(bookingParam) ? bookingParam : null;
+  const [testBooking, setTestBooking] = useState<TestBookingStatus | null>(null);
   const visit = workspace.visits.find(v => v.id === params.get("visit") && v.status === "waiting") || workspace.visits.find(v => v.status === "waiting");
   const [consultation, setConsultation] = useState<ConsultationData | null>(null);
   const [queue, setQueue] = useState<QueueData | null>(null);
   const [ready, setReady] = useState(false); const [loading, setLoading] = useState(!isSample);
   const [error, setError] = useState("");
-  useBookingNotifications("patient", consultation ? [consultation] : [], !loading, isSample);
+  useBookingNotifications("patient", bookingId && testBooking ? [{ id: bookingId, status: testBooking.status }] : consultation ? [consultation] : [], !loading, isSample);
   useEffect(() => {
     let active = true; let fetching = false;
     const load = async () => {
       if (fetching) return; fetching = true;
       try {
         if (isSample) {
-          const { data, error } = await supabase.functions.invoke("demo-call-room", { body: { action: "status" } });
+          const [{ data, error }, booked] = await Promise.all([
+            supabase.functions.invoke("demo-call-room", { body: { action: "status" } }),
+            bookingId ? getTestBooking(bookingId).then(b => ({ b, failed: false }), () => ({ b: null, failed: true })) : Promise.resolve(null),
+          ]);
           if (!active) return;
-          setReady(!error && !!data?.doctorInCall); setError(error ? "Call status unavailable. Trying again…" : "");
+          if (booked && !booked.failed) setTestBooking(booked.b);
+          setReady(!error && !!data?.doctorInCall);
+          setError(error || booked?.failed ? "Status unavailable. Trying again…" : booked && !booked.b ? "This test booking has expired. Please book again." : "");
         } else {
           if (!id) { navigate("/my-visits"); return; }
           const { data: { session } } = await supabase.auth.getSession();
@@ -55,9 +64,10 @@ const WaitingRoom = () => {
     void load(); const timer = setInterval(load, isSample ? 4000 : 15000);
     const channel = !isSample && id ? supabase.channel(`waiting-${id}-${crypto.randomUUID()}`).on("postgres_changes", { event: "UPDATE", schema: "public", table: "consultations", filter: `id=eq.${id}` }, () => { void load(); }).subscribe() : null;
     return () => { active = false; clearInterval(timer); if (channel) void supabase.removeChannel(channel); };
-  }, [id, isSample, navigate]);
-  const doctor: DoctorInfo | undefined = isSample ? sampleStatus === "claimed" ? { full_name: "Dr. Alex Morgan", specialization: "General practitioner" } : undefined : queue?.doctor;
-  const canJoin = ready && (isSample ? !!visit && sampleStatus === "claimed" : !!consultation);
+  }, [id, isSample, navigate, bookingId]);
+  const accepted = bookingId ? testBooking?.status === "claimed" : sampleStatus === "claimed";
+  const doctor: DoctorInfo | undefined = bookingId ? accepted && testBooking?.doctor_name ? { full_name: testBooking.doctor_name, specialization: "General practitioner" } : undefined : isSample ? sampleStatus === "claimed" ? { full_name: "Dr. Alex Morgan", specialization: "General practitioner" } : undefined : queue?.doctor;
+  const canJoin = ready && (isSample ? !!visit && accepted : !!consultation);
   const wait = ready ? "Ready now" : isSample ? "~3 mins" : queue ? queue.estimated_minutes < 3 ? "< 3 mins" : `~${queue.estimated_minutes} mins` : "—";
   return <div className="min-h-screen bg-lounge">
     <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur"><div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-6"><div className="flex items-center gap-2 text-primary"><HeartPulse className="h-7 w-7" /><span className="text-xl font-bold">DocNow</span><span className="ms-3 hidden items-center gap-1 border-s ps-4 text-xs text-muted-foreground md:flex"><ShieldCheck className="h-4 w-4" />{isSample ? "Sample consultation" : "Patient consultation"}</span></div><nav className="flex items-center gap-1"><BookingNotifications role="patient" /><Button variant="ghost" size="sm" onClick={() => navigate("/my-visits")}>My visits</Button><LanguageSwitcher /></nav></div></header>
@@ -70,7 +80,7 @@ const WaitingRoom = () => {
           <section className="flex items-center gap-4 rounded-lg border bg-card p-5"><Avatar className="h-16 w-16"><AvatarImage src={doctor?.avatar_url} alt={doctor?.full_name} /><AvatarFallback className="bg-accent text-primary"><Stethoscope className="h-7 w-7" /></AvatarFallback></Avatar><div className="min-w-0"><p className="mb-1 text-xs text-muted-foreground">{doctor ? "Your doctor" : "Finding your doctor"}</p><h2 className="break-words text-lg font-semibold">{doctor?.full_name || "Next available doctor"}</h2><p className="text-sm text-muted-foreground">{doctor?.specialization || "General consultation"}</p>{isSample && <p className="mt-1 text-xs text-primary">Sample doctor · Not licence-verified</p>}</div></section>
           <section className="rounded-lg border bg-card p-5"><div className="mb-5 flex items-center justify-between"><h2 className="font-semibold">Consultation status</h2><span className={`flex items-center gap-1.5 text-xs ${ready ? "text-success" : "text-muted-foreground"}`}><span className={`h-2 w-2 rounded-full ${ready ? "bg-success" : "bg-primary"}`} />{ready ? "Doctor ready" : "Waiting"}</span></div><div className="grid grid-cols-2 gap-4"><div><p className="text-xs text-muted-foreground">Estimated wait</p><p className="mt-2 text-2xl font-semibold text-primary">{wait}</p></div><div className="border-s ps-5"><p className="text-xs text-muted-foreground">Your place in line</p><p className="mt-2 text-2xl font-semibold">{isSample ? visit ? "#1" : "—" : queue ? `#${queue.position}` : "—"}</p></div></div><p className="mt-5 flex items-center gap-2 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" />{isSample ? "Sample estimate · Call availability updates live" : "Wait times are estimates"}</p>{error && <p role="status" className="mt-3 text-sm text-destructive">{error}</p>}</section>
           <section className="rounded-lg border bg-card p-5"><h2 className="mb-3 flex items-center gap-2 font-semibold"><UserRound className="h-4 w-4 text-primary" />Reason for your visit</h2><p className="break-words text-sm text-muted-foreground">{isSample ? visit?.reason || "No active visit" : consultation?.reason_description || "General consultation"}</p></section>
-          <Button className="h-12 w-full gap-2 rounded-xl font-semibold shadow-md" disabled={!canJoin || loading} onClick={() => navigate(isSample ? `${demoCallPath("patient")}&visit=${visit?.id || "sample-1"}` : `/call/${id}`)}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}Join Video Consultation<ArrowRight className="ms-auto h-4 w-4" /></Button><p className="text-center text-xs text-muted-foreground">{ready ? "Your microphone will be muted when you enter." : "You can enter once the doctor starts the call."}</p>
+          <Button className="h-12 w-full gap-2 rounded-xl font-semibold shadow-md" disabled={!canJoin || loading} onClick={() => navigate(isSample ? `${demoCallPath("patient")}&visit=${visit?.id || "sample-1"}` : `/call/${id}`)}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}Join Video Consultation<ArrowRight className="ms-auto h-4 w-4" /></Button><p className="text-center text-xs text-muted-foreground">{ready && canJoin ? "Your microphone will be muted when you enter." : isSample && !accepted ? "Waiting for a doctor to accept your booking." : "You can enter once the doctor starts the call."}</p>
         </aside>
       </div>
     </main>
