@@ -6,7 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { SummaryView, VisitSummary } from "@/components/VisitSummaryDialog";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
-import { FileText, LogOut } from "lucide-react";
+import { FileText, LogOut, Video } from "lucide-react";
+import { MOCK_LOGIN_ENABLED, DEMO_CALL_ID, demoCallPath } from "@/lib/mock-login";
+void DEMO_CALL_ID;
 
 interface Visit {
   id: string;
@@ -23,7 +25,27 @@ const MyVisits = () => {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [doctorInCall, setDoctorInCall] = useState(false);
+
   useEffect(() => {
+    if (!MOCK_LOGIN_ENABLED) return;
+    let active = true;
+    const check = async () => {
+      const { data } = await supabase.functions.invoke("demo-call-room", { body: { action: "status" } });
+      if (active) setDoctorInCall(!!data?.doctorInCall);
+    };
+    check();
+    const id = setInterval(check, 4000);
+    return () => { active = false; clearInterval(id); };
+  }, []);
+
+  useEffect(() => {
+    if (MOCK_LOGIN_ENABLED) {
+      // Demo: one sample visit, no real records.
+      setVisits([{ id: "sample-1", created_at: new Date().toISOString(), reason_category: null, status: "claimed", visit_summary: null, visit_summary_approved_at: null }]);
+      setLoading(false);
+      return;
+    }
     let userId = "";
     const load = async () => {
       const { data } = await supabase
@@ -54,7 +76,7 @@ const MyVisits = () => {
           <h1 className="text-2xl font-bold text-primary cursor-pointer" onClick={() => navigate("/")}>{t("header.brand")}</h1>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <Button variant="ghost" size="sm" onClick={async () => { await supabase.auth.signOut(); navigate("/"); }}>
+            <Button variant="ghost" size="sm" onClick={async () => { if (!MOCK_LOGIN_ENABLED) await supabase.auth.signOut(); navigate("/"); }}>
               <LogOut className="h-4 w-4 me-2" />{t("header.logout")}
             </Button>
           </div>
@@ -83,6 +105,14 @@ const MyVisits = () => {
                   {v.created_at ? new Date(v.created_at).toLocaleDateString() : ""}
                 </span>
               </div>
+              {MOCK_LOGIN_ENABLED && (
+                <div className="flex items-center gap-3">
+                  <Button disabled={!doctorInCall} onClick={() => navigate(demoCallPath("patient"))}>
+                    <Video className="h-4 w-4 me-2" />Join call
+                  </Button>
+                  {!doctorInCall && <span className="text-sm text-muted-foreground">Waiting for the doctor to start…</span>}
+                </div>
+              )}
               {v.visit_summary && v.visit_summary_approved_at ? (
                 <SummaryView s={v.visit_summary} />
               ) : (
