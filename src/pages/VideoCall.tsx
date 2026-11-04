@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { DEMO_CALL_ID, MOCK_LOGIN_ENABLED, mockLoginDestination } from "@/lib/mock-login";
 import DailyIframe, { DailyCall } from "@daily-co/daily-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,9 @@ const VideoCall = () => {
   const joinedUrlRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [waitingForDoctor, setWaitingForDoctor] = useState(false);
+  const [searchParams] = useSearchParams();
+  const isDemo = MOCK_LOGIN_ENABLED && consultationId === DEMO_CALL_ID;
+  const demoRole: "doctor" | "patient" = searchParams.get("as") === "doctor" ? "doctor" : "patient";
 
   useEffect(() => {
     if (!consultationId) {
@@ -66,7 +70,7 @@ const VideoCall = () => {
         joinedUrlRef.current = url;
 
         frame.on("left-meeting", () => {
-          navigate("/");
+          navigate(isDemo ? mockLoginDestination(demoRole) : "/");
         });
         frame.on("error", (ev: any) => {
           console.error("[VideoCall] Daily error event", ev);
@@ -81,7 +85,7 @@ const VideoCall = () => {
         });
 
         const { data: { session } } = await supabase.auth.getSession();
-        const { data: profile } = session
+        const { data: profile } = session && !isDemo
           ? await supabase
               .from("profiles")
               .select("full_name")
@@ -100,7 +104,7 @@ const VideoCall = () => {
         await frame.join({
           url,
           token: meetingToken,
-          userName: profile?.full_name || "Participant",
+          ...(isDemo ? {} : { userName: profile?.full_name || "Participant" }),
         });
         console.log("[VideoCall] join() resolved");
 
@@ -123,6 +127,40 @@ const VideoCall = () => {
         }
       }
     };
+
+    const tryStartDemo = async () => {
+      const { data, error } = await supabase.functions.invoke("demo-call-room", { body: { role: demoRole } });
+      if (cancelled) return;
+      if (error) {
+        if ((error as any).context?.status === 409) {
+          setWaitingForDoctor(true);
+          setLoading(false);
+          setTimeout(() => { if (!cancelled) tryStartDemo(); }, 4000);
+          return;
+        }
+        toast.error("Could not start the call");
+        setLoading(false);
+        return;
+      }
+      meetingToken = data.token;
+      await join(data.url);
+      if (demoRole === "patient" && callRef.current) {
+        // When the doctor leaves, end the call for the patient too.
+        callRef.current.on("participant-left", (ev) => {
+          if (ev?.participant?.user_name === "Doctor (demo)") callRef.current?.leave();
+        });
+      }
+    };
+
+    if (isDemo) {
+      tryStartDemo();
+      return () => {
+        cancelled = true;
+        callRef.current?.destroy();
+        callRef.current = null;
+        joinedUrlRef.current = null;
+      };
+    }
 
     const tryStart = async () => {
       try {
@@ -201,7 +239,7 @@ const VideoCall = () => {
       try { callRef.current.destroy(); } catch {}
       callRef.current = null;
     }
-    navigate(-1);
+    navigate(isDemo ? mockLoginDestination(demoRole) : -1 as any);
   };
 
   return (
