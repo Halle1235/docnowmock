@@ -42,7 +42,7 @@ const WaitingRoom = () => {
           ]);
           if (!active) return;
           if (booked && !booked.failed) setTestBooking(booked.b);
-          setReady(!error && !!data?.doctorInCall);
+          setReady(!error && !!data?.doctorInCall && (!booked || booked.b?.status === "claimed"));
           setError(error || booked?.failed ? "Status unavailable. Trying again…" : booked && !booked.b ? "This test booking has expired. Please book again." : "");
         } else {
           if (!id) { navigate("/my-visits"); return; }
