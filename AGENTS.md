@@ -14,6 +14,7 @@
 - Clinical notes and added medicines sync into the memory-only sample workspace on edit so closing panels does not discard documentation.
 
 - Share prejoin media acquisition and cleanup through one camera-check component; isolate sample waiting-room polling from authenticated subscriptions to keep sample pages off live records.
+- Acquire prejoin camera and microphone independently; an unavailable device or optional audio meter must not discard the other working device.
 - Call details use a responsive drawer, and elapsed time starts on joining; status badges must reflect verified integrations rather than presentation claims.
 - Daily presentation adapts global CSS hex tokens because its iframe rejects HSL strings; keep call audio initially muted through the shared presentation options.
 - Room handler tests execute the real edge source with synthetic auth/RPC/video-provider boundaries; keep deployed permission checks separate so mocked tests are never represented as signed-in end-to-end verification.
