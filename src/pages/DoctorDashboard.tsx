@@ -9,6 +9,8 @@ import { Clock, User, LogOut, Video, CheckCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import VisitSummaryDialog from "@/components/VisitSummaryDialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { MOCK_LOGIN_ENABLED, SAMPLE_CONSULTATION, demoCallPath } from "@/lib/mock-login";
 
 interface Consultation {
@@ -34,6 +36,40 @@ const DoctorDashboard = () => {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [userEmail, setUserEmail] = useState("");
   const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
+  const [savingOnline, setSavingOnline] = useState(false);
+
+  useEffect(() => {
+    if (MOCK_LOGIN_ENABLED) return;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data } = await supabase
+        .from("doctor_profiles")
+        .select("is_available")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      if (data) setIsOnline(data.is_available !== false);
+    })();
+  }, []);
+
+  const toggleOnline = async (next: boolean) => {
+    if (MOCK_LOGIN_ENABLED) { setIsOnline(next); return; }
+    setSavingOnline(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setSavingOnline(false); return; }
+    // Database rules only let a doctor change their own row.
+    const { error } = await supabase
+      .from("doctor_profiles")
+      .update({ is_available: next })
+      .eq("user_id", session.user.id);
+    setSavingOnline(false);
+    if (error) {
+      toast({ title: "Could not update your status", description: error.message, variant: "destructive" });
+      return;
+    }
+    setIsOnline(next);
+  };
 
   useEffect(() => {
     if (MOCK_LOGIN_ENABLED) {
@@ -217,6 +253,18 @@ const DoctorDashboard = () => {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-primary">{t('header.doctors')}</h1>
             <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="online-switch"
+                  checked={isOnline}
+                  disabled={savingOnline}
+                  onCheckedChange={toggleOnline}
+                  aria-label="Available for new patients"
+                />
+                <Label htmlFor="online-switch" className="text-sm">
+                  {isOnline ? "Online" : "Offline"}
+                </Label>
+              </div>
               <LanguageSwitcher />
               <span className="text-sm text-muted-foreground">{userEmail}</span>
               <Button variant="ghost" size="sm" onClick={handleLogout}>
@@ -236,6 +284,12 @@ const DoctorDashboard = () => {
               {t('dashboard.subtitle')}
             </p>
           </div>
+
+          {!isOnline && (
+            <Card className="mb-6 p-4 text-sm text-muted-foreground">
+              You're offline. You won't be counted as available and can't take new patients until you go online.
+            </Card>
+          )}
 
           <div className="mb-8">
             <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
@@ -287,7 +341,8 @@ const DoctorDashboard = () => {
 
                         <Button
                           onClick={() => claimConsultation(consultation.id)}
-                          disabled={claimingId === consultation.id}
+                          disabled={claimingId === consultation.id || !isOnline}
+                          title={!isOnline ? "Go online to take new patients" : undefined}
                           className="ml-4"
                         >
                           {claimingId === consultation.id ? t('dashboard.assigning') : t('dashboard.takeConsultation')}
