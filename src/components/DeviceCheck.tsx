@@ -7,6 +7,7 @@ export default function DeviceCheck({ onJoin, canJoin = false }: { onJoin?: () =
   const stream = useRef<MediaStream | null>(null);
   const audio = useRef<AudioContext | null>(null);
   const timer = useRef<number>();
+  const mounted = useRef(true);
   const [active, setActive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [level, setLevel] = useState(0);
@@ -18,19 +19,22 @@ export default function DeviceCheck({ onJoin, canJoin = false }: { onJoin?: () =
     if (video.current) video.current.srcObject = null;
     setActive(false); setLevel(0);
   };
-  useEffect(() => () => { stream.current?.getTracks().forEach(track => track.stop()); if (timer.current) cancelAnimationFrame(timer.current); void audio.current?.close(); }, []);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; stream.current?.getTracks().forEach(track => track.stop()); if (timer.current) cancelAnimationFrame(timer.current); void audio.current?.close(); }; }, []);
   const start = async () => {
     setBusy(true); setError("");
     try {
       const media = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      if (!mounted.current) { media.getTracks().forEach(track => track.stop()); return; }
       stream.current = media; if (video.current) { video.current.srcObject = media; await video.current.play(); }
+      if (!mounted.current) { media.getTracks().forEach(track => track.stop()); return; }
       const context = new AudioContext(); audio.current = context; await context.resume();
+      if (!mounted.current) { media.getTracks().forEach(track => track.stop()); await context.close(); return; }
       const source = context.createMediaStreamSource(media); const analyser = context.createAnalyser(); analyser.fftSize = 256; source.connect(analyser);
       const samples = new Uint8Array(analyser.frequencyBinCount);
       const sample = () => { analyser.getByteFrequencyData(samples); setLevel(Math.min(100, Math.round(samples.reduce((sum, value) => sum + value, 0) / samples.length / 128 * 100))); timer.current = requestAnimationFrame(sample); };
       sample(); setActive(true);
-    } catch { stop(); setError("Camera or microphone unavailable. Check browser permissions and try again."); }
-    finally { setBusy(false); }
+    } catch { if (mounted.current) { stop(); setError("Camera or microphone unavailable. Check browser permissions and try again."); } }
+    finally { if (mounted.current) setBusy(false); }
   };
   return <section className="space-y-4">
     <div className="relative aspect-video max-w-lg bg-muted rounded-lg overflow-hidden"><video ref={video} muted playsInline className="w-full h-full object-cover" />{!active && <div className="absolute inset-0 flex items-center justify-center"><Camera className="h-10 w-10 text-muted-foreground" /></div>}</div>
