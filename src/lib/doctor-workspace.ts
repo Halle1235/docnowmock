@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { MOCK_LOGIN_ENABLED } from "./mock-login";
 import { sampleJournal } from "./patient-journal";
+import { SAMPLE_PATIENTS } from "./sample-patients";
 
 export interface PrescriptionDraft {
   medicine: string;
@@ -59,7 +60,12 @@ export function validPrescription(p: PrescriptionDraft) {
 function sampleVisit(id: string, createdAt: number): DoctorVisit {
   return { id, patientId: id === "sample-1" ? "sample-patient" : `patient-${id}`, name: "Sample patient", dateOfBirth: "1992-04-18", allergies: "Penicillin (sample)", reason: "Sore throat", symptoms: "Sore throat for two days; no reported fever (sample)", createdAt, status: "pending", notes: "", prescriptions: [] };
 }
-let snapshot = { available: false, sound: false, visits: [sampleVisit("sample-1", Date.now() - 7 * 60000)] as DoctorVisit[] };
+const initialVisits: DoctorVisit[] = SAMPLE_PATIENTS.flatMap((patient, index) => {
+  const current = { ...sampleVisit(patient.visitId, Date.now() - (7 - index * 2) * 60000), patientId: patient.id, name: patient.name, dateOfBirth: patient.dateOfBirth, reason: patient.reason, allergies: patient.allergies };
+  const completedAt = Date.parse(`2026-10-${24 - index}T09:00:00.000Z`);
+  return [current, { ...current, id: `${patient.visitId}-past`, status: "completed" as const, createdAt: completedAt - 600000, startedAt: completedAt - 600000, completedAt, durationSeconds: 600, notes: patient.notes }];
+});
+let snapshot = { available: false, sound: false, visits: initialVisits };
 const listeners = new Set<() => void>();
 function emit(next: typeof snapshot) {
   if (!MOCK_LOGIN_ENABLED) return;
@@ -79,8 +85,9 @@ export const doctorWorkspace = {
     emit({ ...snapshot, visits: [...snapshot.visits, { ...sampleVisit(crypto.randomUUID(), Date.now()), name: `Sample patient ${snapshot.visits.length + 1}`, reason: "Seasonal allergies", allergies: "Not reported", symptoms: "Sneezing and itchy eyes (sample)" }] });
   },
   claim: (id: string) => {
-    if (!snapshot.available) return;
+    if (!MOCK_LOGIN_ENABLED || !snapshot.available || !snapshot.visits.some(v => v.id === id && v.status === "pending")) return false;
     updateVisit(id, v => v.status === "pending" ? { ...v, status: "claimed" } : v);
+    return true;
   },
   saveDraft: (id: string, notes: string, prescriptions: PrescriptionDraft[]) => {
     if (notes.length > 10000 || prescriptions.length > 20 || !prescriptions.every(validPrescription)) return false;

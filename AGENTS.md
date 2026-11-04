@@ -1,4 +1,5 @@
 # Architecture rules
+- Share fictional patient identities across sample queue, completed history, and journal to preserve ID-based continuity without seeding live records.
 - Patient journals use append-only server-derived patient/doctor identity and timestamp through authenticated audited RPCs; verified assigned doctors can read the patient's cross-visit timeline, while sample journals remain isolated in memory.
 - Patient sample profile, ratings, follow-ups, and visit documents stay in memory; PDF/QR output is explicitly non-clinical and never a real pharmacy verification or insurance claim.
 - Call text uses bounded Daily app messages; file bytes use a size/type-validated direct WebRTC data channel, never public storage, with no persistence and explicit network-failure feedback.
