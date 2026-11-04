@@ -122,6 +122,7 @@ const VideoCall = () => {
           return;
         }
         // Fallback in case 'joined-meeting' didn't fire yet
+        if (isDemo && demoRole === "doctor") doctorWorkspace.startCall(visitId);
         setLoading(false);
         setWaitingForDoctor(false);
       } catch (e: any) {

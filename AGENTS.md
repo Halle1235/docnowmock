@@ -5,3 +5,4 @@
 - Doctor sample workspace state lives only in memory and is shared across original dashboard/call navigation; never persist clinical drafts in browser storage or use sample state for real permissions.
 - Sample call statistics start on the meeting-joined event and finish on leaving, not on claiming a visit, to avoid reporting queue time as call duration.
 - Medicine choices do not prefill doses or issue prescriptions; clinical fields are bounded, explicit draft inputs to avoid unchecked treatment recommendations.
+- Clinical notes and added medicines sync into the memory-only sample workspace on edit so closing panels does not discard documentation.
