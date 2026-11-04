@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, User } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { toast } from "sonner";
+import { MOCK_PAYMENT_ENABLED, mockConsultation } from "@/lib/mock-login";
 
 interface DoctorInfo {
   full_name: string;
@@ -55,6 +56,7 @@ const WaitingRoom = () => {
   };
 
   useEffect(() => {
+    if (MOCK_PAYMENT_ENABLED) return;
     if (!consultationId) return;
     loadQueue();
     const timer = setInterval(loadQueue, 15000);
@@ -62,6 +64,12 @@ const WaitingRoom = () => {
   }, [consultationId]);
 
   useEffect(() => {
+    if (MOCK_PAYMENT_ENABLED) {
+      setConsultation({ id: mockConsultation.id, status: "pending" });
+      setQueue({ position: 1, estimated_minutes: 5, available_doctors: 1 });
+      setLoading(false);
+      return;
+    }
     if (!consultationId) {
       navigate("/");
       return;
@@ -196,6 +204,7 @@ const WaitingRoom = () => {
 
       <main className="flex-1 flex items-center justify-center px-4">
         <div className="text-center space-y-8 max-w-md w-full">
+          {MOCK_PAYMENT_ENABLED && <p className="text-sm text-muted-foreground">Demo consultation · No real appointment booked</p>}
           {!isDoctorAssigned ? (
             <>
               <div className="relative mx-auto w-24 h-24">

@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2, PhoneOff } from "lucide-react";
 import { toast } from "sonner";
+import { MOCK_LOGIN_ENABLED } from "@/lib/mock-login";
+import doctorVideo from "@/assets/doctor-video-call.jpg";
 
 const VideoCall = () => {
   const { consultationId } = useParams<{ consultationId: string }>();
@@ -16,6 +18,10 @@ const VideoCall = () => {
   const [waitingForDoctor, setWaitingForDoctor] = useState(false);
 
   useEffect(() => {
+    if (MOCK_LOGIN_ENABLED) {
+      setLoading(false);
+      return;
+    }
     if (!consultationId) {
       navigate("/");
       return;
@@ -217,6 +223,12 @@ const VideoCall = () => {
       </header>
 
       <main className="flex-1 relative bg-black">
+        {MOCK_LOGIN_ENABLED && (
+          <div className="absolute inset-0 flex flex-col bg-background">
+            <p className="p-4 text-center text-muted-foreground">Demo video consultation · Camera and microphone are off</p>
+            <img src={doctorVideo} alt="Sample doctor consultation" className="min-h-0 flex-1 w-full object-contain" />
+          </div>
+        )}
         <div ref={containerRef} className="absolute inset-0" />
 
         {loading && (
