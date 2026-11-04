@@ -9,6 +9,7 @@ import { Clock, User, LogOut, Video, CheckCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import VisitSummaryDialog from "@/components/VisitSummaryDialog";
+import DoctorWorkspace from "@/components/DoctorWorkspace";
 import { MOCK_LOGIN_ENABLED, SAMPLE_CONSULTATION, demoCallPath } from "@/lib/mock-login";
 
 interface Consultation {
@@ -26,7 +27,7 @@ interface Consultation {
   };
 }
 
-const DoctorDashboard = () => {
+const LiveDoctorDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -373,4 +374,5 @@ const DoctorDashboard = () => {
   );
 };
 
+const DoctorDashboard = () => MOCK_LOGIN_ENABLED ? <DoctorWorkspace /> : <LiveDoctorDashboard />;
 export default DoctorDashboard;

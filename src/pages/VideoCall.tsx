@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2, PhoneOff } from "lucide-react";
 import { toast } from "sonner";
+import ClinicalNotesPanel from "@/components/ClinicalNotesPanel";
+import { doctorWorkspace, useDoctorWorkspace } from "@/lib/doctor-workspace";
 
 const VideoCall = () => {
   const { consultationId } = useParams<{ consultationId: string }>();
@@ -18,6 +20,9 @@ const VideoCall = () => {
   const [searchParams] = useSearchParams();
   const isDemo = MOCK_LOGIN_ENABLED && consultationId === DEMO_CALL_ID;
   const demoRole: "doctor" | "patient" = searchParams.get("as") === "doctor" ? "doctor" : "patient";
+  const workspace = useDoctorWorkspace();
+  const visitId = searchParams.get("visit") || "sample-1";
+  const sampleVisit = isDemo && demoRole === "doctor" ? workspace.visits.find(v => v.id === visitId && (v.status === "claimed" || v.status === "in_progress")) : undefined;
 
   useEffect(() => {
     if (!consultationId) {
@@ -70,6 +75,7 @@ const VideoCall = () => {
         joinedUrlRef.current = url;
 
         frame.on("left-meeting", () => {
+          if (isDemo && demoRole === "doctor") doctorWorkspace.finishCall(visitId);
           navigate(isDemo ? mockLoginDestination(demoRole) : "/");
         });
         frame.on("error", (ev: any) => {
@@ -79,12 +85,13 @@ const VideoCall = () => {
         frame.on("joined-meeting", () => {
           console.log("[VideoCall] joined-meeting");
           if (!cancelled) {
+            if (isDemo && demoRole === "doctor") doctorWorkspace.startCall(visitId);
             setLoading(false);
             setWaitingForDoctor(false);
           }
         });
 
-        const { data: { session } } = await supabase.auth.getSession();
+        const session = isDemo ? null : (await supabase.auth.getSession()).data.session;
         const { data: profile } = session && !isDemo
           ? await supabase
               .from("profiles")
@@ -231,9 +238,10 @@ const VideoCall = () => {
         joinedUrlRef.current = null;
       }
     };
-  }, [consultationId, navigate]);
+  }, [consultationId, navigate, isDemo, demoRole, visitId]);
 
   const leave = async () => {
+    if (isDemo && demoRole === "doctor") doctorWorkspace.finishCall(visitId);
     if (callRef.current) {
       try { await callRef.current.leave(); } catch {}
       try { callRef.current.destroy(); } catch {}
@@ -254,7 +262,8 @@ const VideoCall = () => {
         </div>
       </header>
 
-      <main className="flex-1 relative bg-black">
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+      <main className="flex-1 relative bg-muted min-h-[65vh]">
         <div ref={containerRef} className="absolute inset-0" />
 
         {loading && (
@@ -278,6 +287,8 @@ const VideoCall = () => {
           </div>
         )}
       </main>
+      {sampleVisit && <aside aria-label="In-call clinical notes" className="w-full lg:w-96 border-t lg:border-t-0 lg:border-s border-border lg:max-h-[calc(100vh-65px)] overflow-y-auto"><ClinicalNotesPanel key={sampleVisit.id} visit={sampleVisit} /></aside>}
+      </div>
     </div>
   );
 };
