@@ -7,7 +7,6 @@ import { SummaryView, VisitSummary } from "@/components/VisitSummaryDialog";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { FileText, LogOut } from "lucide-react";
-import { MOCK_LOGIN_ENABLED, mockConsultation } from "@/lib/mock-login";
 
 interface Visit {
   id: string;
@@ -25,11 +24,6 @@ const MyVisits = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (MOCK_LOGIN_ENABLED) {
-      setVisits(sessionStorage.getItem("mockBooking") ? [{ ...mockConsultation }] : []);
-      setLoading(false);
-      return;
-    }
     let userId = "";
     const load = async () => {
       const { data } = await supabase
@@ -60,7 +54,7 @@ const MyVisits = () => {
           <h1 className="text-2xl font-bold text-primary cursor-pointer" onClick={() => navigate("/")}>{t("header.brand")}</h1>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <Button variant="ghost" size="sm" onClick={async () => { if (!MOCK_LOGIN_ENABLED) await supabase.auth.signOut(); navigate("/"); }}>
+            <Button variant="ghost" size="sm" onClick={async () => { await supabase.auth.signOut(); navigate("/"); }}>
               <LogOut className="h-4 w-4 me-2" />{t("header.logout")}
             </Button>
           </div>
@@ -69,10 +63,8 @@ const MyVisits = () => {
       <main className="container mx-auto px-4 py-8 max-w-3xl space-y-6">
         <div>
           <h2 className="text-3xl font-bold mb-1">My visits</h2>
-          {MOCK_LOGIN_ENABLED && <p className="text-sm text-muted-foreground">Demo account</p>}
           <p className="text-muted-foreground">Summaries appear here once your doctor has reviewed and approved them.</p>
         </div>
-        {MOCK_LOGIN_ENABLED && <Button onClick={() => navigate("/registration")}>Book consultation</Button>}
         {loading ? (
           <p className="text-muted-foreground">{t("dashboard.loading")}</p>
         ) : visits.length === 0 ? (

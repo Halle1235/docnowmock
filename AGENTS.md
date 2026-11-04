@@ -1,3 +1,3 @@
 # Architecture rules
-- Reuse existing patient and doctor screens in mock mode, with early-return guards before all live account, consultation, subscription, and video operations; mock flows must never grant privileges, create sessions, persist passwords, or access live patient data. Keep admin preview separate from live administration.
+- Keep temporary mock login destinations separate from authenticated dashboards; mock screens must never grant privileges, create sessions, persist passwords, or access live patient data.
 - Control temporary mock login behavior through one shared module so real authentication can be restored consistently.
