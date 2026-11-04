@@ -4,6 +4,7 @@ import { sampleJournal } from "./patient-journal";
 import { SAMPLE_PATIENTS } from "./sample-patients";
 import { notifySampleAcceptance } from "./booking-notifications";
 import { sampleBooking } from "./sample-booking";
+import { completeTestBooking, type TestBooking } from "./test-bookings";
 
 export interface PrescriptionDraft {
   medicine: string;
@@ -28,6 +29,7 @@ export interface DoctorVisit {
   durationSeconds?: number;
   followUpDate?: string;
   followUpReason?: string;
+  testBooking?: boolean;
 }
 export const WAIT_ALERT_MINUTES = 5;
 export const MEDICINE_OPTIONS = ["Paracetamol", "Ibuprofen", "Cetirizine", "Oral rehydration salts"];
@@ -113,8 +115,26 @@ export const doctorWorkspace = {
     if (!visit || !["claimed", "in_progress"].includes(visit.status) || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date || parsed < today || !reason.trim() || reason.length > 500) return false;
     updateVisit(id, v => ({ ...v, followUpDate: date, followUpReason: reason.trim() })); return true;
   },
-  finishCall: (id: string, now = Date.now()) => updateVisit(id, v => v.status === "in_progress" && v.startedAt !== undefined ? { ...v, status: "completed", completedAt: now, durationSeconds: Math.max(0, Math.round((now - v.startedAt) / 1000)) } : v),
+  // Merge the shared no-login test queue; a booking taken elsewhere disappears from this queue.
+  syncTestBookings: (rows: TestBooking[]) => {
+    const remote = new Map(rows.map(r => [r.id, r]));
+    const kept = snapshot.visits.filter(v => !v.testBooking || v.status !== "pending" || remote.get(v.id)?.status === "pending");
+    const known = new Set(kept.map(v => v.id));
+    const added = rows.filter(r => r.status === "pending" && !known.has(r.id)).map(r => ({ ...sampleVisit(r.id, Date.parse(r.created_at) || Date.now()), patientId: `test-${r.id}`, name: r.patient_name, reason: r.reason, symptoms: r.reason, dateOfBirth: "", allergies: "Not provided (test booking)", testBooking: true }));
+    if (added.length || kept.length !== snapshot.visits.length) emit({ ...snapshot, visits: [...kept, ...added] });
+  },
+  markTestClaimed: (id: string) => {
+    if (!snapshot.available || !snapshot.visits.some(v => v.id === id && v.testBooking && v.status === "pending")) return false;
+    updateVisit(id, v => ({ ...v, status: "claimed" })); return true;
+  },
+  finishCall: (id: string, now = Date.now()) => {
+    if (snapshot.visits.some(v => v.id === id && v.testBooking && v.status === "in_progress")) void completeTestBooking(id);
+    finishVisit(id, now);
+  },
 };
+function finishVisit(id: string, now: number) {
+  updateVisit(id, v => v.status === "in_progress" && v.startedAt !== undefined ? { ...v, status: "completed", completedAt: now, durationSeconds: Math.max(0, Math.round((now - v.startedAt) / 1000)) } : v);
+}
 sampleBooking.subscribe(() => {
   // Synchronize only the fixed fictional booking's presentation, never live records.
   const next = sampleBooking.getSnapshot();
