@@ -44,8 +44,7 @@ const LiveDoctorDashboard = () => {
       setLoading(false);
       return;
     }
-    checkAuth();
-    loadConsultations();
+    checkAuth().then((allowed) => { if (allowed) loadConsultations(); });
 
     const channel = supabase
       .channel('consultations-doctor-dashboard')
@@ -68,27 +67,23 @@ const LiveDoctorDashboard = () => {
     
     if (!session) {
       navigate("/auth");
-      return;
+      return false;
     }
 
     setUserEmail(session.user.email || "");
 
-    const { data: roles } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', session.user.id)
-      .eq('role', 'doctor')
-      .maybeSingle();
+    const { data: verified, error } = await supabase.rpc('is_authorized_doctor', { _user_id: session.user.id });
 
-    if (!roles) {
+    if (error || !verified) {
       toast({
         title: "Åtkomst nekad",
         description: "Ditt läkarkonto är inte verifierat än.",
         variant: "destructive",
       });
       navigate("/my-visits");
+      return false;
     }
-
+    return true;
   };
 
   const loadConsultations = async () => {
@@ -96,37 +91,11 @@ const LiveDoctorDashboard = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { data, error } = await supabase
-        .from('consultations')
-        .select('*')
-        .or(`status.eq.pending,doctor_id.eq.${session.user.id}`)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('list_doctor_consultations');
 
       if (error) throw error;
 
-      const patientIds = Array.from(new Set((data || []).map((c: any) => c.patient_id)));
-      let profilesMap: Record<string, { full_name: string; phone: string }> = {};
-
-      if (patientIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, full_name, phone')
-          .in('id', patientIds);
-
-        if (profilesError) throw profilesError;
-
-        profilesMap = (profilesData || []).reduce((acc: any, p: any) => {
-          acc[p.id] = { full_name: p.full_name, phone: p.phone };
-          return acc;
-        }, {});
-      }
-
-      const merged = (data || []).map((c: any) => ({
-        ...c,
-        profiles: profilesMap[c.patient_id] || { full_name: '', phone: '' },
-      }));
-
-      setConsultations(merged as any);
+      setConsultations(Array.isArray(data) ? data as unknown as Consultation[] : []);
     } catch (error: any) {
       toast({
         title: t('dashboard.couldNotLoad'),
@@ -149,15 +118,7 @@ const LiveDoctorDashboard = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { error } = await supabase
-        .from('consultations')
-        .update({
-          doctor_id: session.user.id,
-          status: 'claimed',
-          claimed_at: new Date().toISOString()
-        })
-        .eq('id', consultationId)
-        .eq('status', 'pending');
+      const { error } = await supabase.rpc('claim_patient_consultation', { _consultation_id: consultationId });
 
       if (error) throw error;
 

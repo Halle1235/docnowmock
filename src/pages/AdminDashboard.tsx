@@ -95,7 +95,7 @@ const AdminDashboard = () => {
   const loadData = async () => {
     setLoading(true);
     const [profilesRes, rolesRes, doctorsRes] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, email, phone").order("full_name"),
+      supabase.rpc("list_admin_profiles").select("id, full_name, email, phone"),
       supabase.from("user_roles").select("user_id, role"),
       supabase
         .from("doctor_profiles")
@@ -144,6 +144,10 @@ const AdminDashboard = () => {
 
   const toggleVerification = async (doctor: DoctorProfile) => {
     const key = `verify-${doctor.id}`;
+    if (MOCK_LOGIN_ENABLED) {
+      setDoctorProfiles((items) => items.map((item) => item.id === doctor.id ? { ...item, is_verified: !item.is_verified } : item));
+      return;
+    }
     setBusyKey(key);
 
     const { error } = await supabase

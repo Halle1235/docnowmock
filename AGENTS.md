@@ -1,4 +1,5 @@
 # Architecture rules
+- Live staff record reads use POST RPCs with transactional auditing; database permissions enforce verified-doctor assignment or admin access, and clinical writes retain caller identity for audit triggers.
 - Original dashboard routes select sample or authenticated content; sample content must never grant privileges, create sessions, persist passwords, or access live patient data.
 - Control temporary mock login behavior through one shared module so real authentication can be restored consistently.
 - Demo video calls (original call screen at the demo id) use a separate no-account function with one shared short-lived room and no database access, so demos never touch patient records.

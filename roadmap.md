@@ -1,4 +1,7 @@
 # Tasks
+- [x] Restrict live patient-record access by verified doctor assignment or administrator role while preserving patient self-access.
+- [x] Add protected access/change auditing and verify deployed database permission rules.
+- [ ] Verify authenticated doctor/admin record reads, edits, and audit readback end-to-end — blocked by mock-only login mode and no requesting-user auth account.
 - [x] Resolve the reported React hook error.
 - [x] Provide temporary mock login flows isolated from live account access.
 - [x] Verify mock logins in the browser.
