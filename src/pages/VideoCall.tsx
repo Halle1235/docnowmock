@@ -27,6 +27,7 @@ const VideoCall = () => {
   const [endOpen, setEndOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [recordReason, setRecordReason] = useState("");
+  const [callError, setCallError] = useState(false);
   const patientState = usePatientWorkspace();
   const [searchParams] = useSearchParams();
   const isDemo = MOCK_LOGIN_ENABLED && consultationId === DEMO_CALL_ID;
@@ -161,6 +162,7 @@ const VideoCall = () => {
         setJoinedCall(frame);
       } catch (e: any) {
         console.error("[VideoCall] Daily join error", e);
+        if (!cancelled) { setLoading(false); setCallError(true); }
         toast.error(e?.message || "Could not join the call");
         if (callRef.current) {
           try { await callRef.current.destroy(); } catch {}
@@ -181,6 +183,7 @@ const VideoCall = () => {
           return;
         }
         toast.error("Could not start the call");
+        setCallError(true);
         setLoading(false);
         return;
       }
@@ -297,6 +300,7 @@ const VideoCall = () => {
     <main className="flex-1 relative bg-call min-w-0 min-h-0">
       <div ref={containerRef} className="absolute inset-0" />
       {loading && <div className="absolute inset-0 flex items-center justify-center bg-call text-call-foreground"><div className="text-center space-y-3"><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /><p>Connecting…</p></div></div>}
+      {!loading && callError && <div className="absolute inset-0 flex items-center justify-center bg-lounge"><div className="space-y-4 px-5 text-center"><h2 className="text-xl font-semibold">Unable to connect</h2><p className="text-sm text-muted-foreground">Check your connection and return to try again.</p><Button variant="outline" onClick={() => navigate(isDemo && demoRole === "doctor" ? "/doctor-dashboard" : `/waiting-room?id=${consultationId}&visit=${visitId}`)}>Return and try again</Button></div></div>}
       {!loading && waitingForDoctor && <div className="absolute inset-0 flex items-center justify-center bg-lounge"><div className="text-center space-y-4 max-w-sm px-5"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent text-primary"><Stethoscope className="h-8 w-8" /></div><h2 className="text-xl font-semibold">Doctor is preparing the room</h2><p className="text-muted-foreground text-sm">Your consultation will connect as soon as your doctor is ready.</p><Button variant="outline" onClick={() => navigate(`/waiting-room?id=${isDemo ? DEMO_CALL_ID : consultationId}&visit=${visitId}`)}>Return to device check</Button></div></div>}
     </main>
     <Sheet modal={false} open={detailsOpen} onOpenChange={setDetailsOpen}><SheetContent forceMount className="w-[85vw] sm:w-96 max-w-[85vw] overflow-y-auto data-[state=closed]:hidden" aria-describedby="consultation-details-description"><SheetHeader className="text-start"><SheetTitle>Consultation details</SheetTitle><SheetDescription id="consultation-details-description">{isDemo ? "Sample call · Do not share real patient records" : "Your consultation"}</SheetDescription></SheetHeader><div className="my-6 space-y-5 border-y py-5"><div><p className="text-xs text-muted-foreground">Patient</p><p className="mt-1 font-medium">{isDemo ? "Sample patient" : "Consultation participant"}</p><p className="mt-1 text-xs text-muted-foreground">UAE PASS not linked</p></div><div><p className="text-xs text-muted-foreground">Doctor</p><p className="mt-1 font-medium">{doctorName}</p></div><div><p className="text-xs text-muted-foreground">Reason for visit</p><p className="mt-1 break-words text-sm">{sampleVisit?.reason || patientVisit?.reason || recordReason || "General consultation"}</p></div></div>{joinedCall && <CallChat call={joinedCall} sample={isDemo} />}{sampleVisit && <ClinicalNotesPanel key={sampleVisit.id} visit={sampleVisit} />}</SheetContent></Sheet>

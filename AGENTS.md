@@ -12,3 +12,4 @@
 
 - Share prejoin media acquisition and cleanup through one camera-check component; isolate sample waiting-room polling from authenticated subscriptions to keep sample pages off live records.
 - Call details use a responsive drawer, and elapsed time starts on joining; status badges must reflect verified integrations rather than presentation claims.
+- Daily presentation adapts global CSS hex tokens because its iframe rejects HSL strings; keep call audio initially muted through the shared presentation options.
