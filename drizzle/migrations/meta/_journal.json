@@ -22,6 +22,13 @@
       "when": 1793762453382,
       "tag": "0002_consultation_room_terminal_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793762887712,
+      "tag": "0003_patient_journal_continuity",
+      "breakpoints": true
     }
   ]
 }

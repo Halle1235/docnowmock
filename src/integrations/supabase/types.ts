@@ -173,6 +173,60 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_journal_entries: {
+        Row: {
+          consultation_id: string
+          created_at: string
+          diagnosis: string
+          doctor_id: string
+          doctor_name: string
+          id: string
+          license_number: string
+          notes: string
+          patient_id: string
+          treatment: string
+        }
+        Insert: {
+          consultation_id: string
+          created_at?: string
+          diagnosis?: string
+          doctor_id: string
+          doctor_name: string
+          id?: string
+          license_number: string
+          notes: string
+          patient_id: string
+          treatment?: string
+        }
+        Update: {
+          consultation_id?: string
+          created_at?: string
+          diagnosis?: string
+          doctor_id?: string
+          doctor_name?: string
+          id?: string
+          license_number?: string
+          notes?: string
+          patient_id?: string
+          treatment?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_journal_entries_consultation_id_fkey"
+            columns: ["consultation_id"]
+            isOneToOne: false
+            referencedRelation: "consultations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_journal_entries_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           allergies: string | null
@@ -261,6 +315,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_patient_journal_entry: {
+        Args: {
+          _consultation_id: string
+          _diagnosis: string
+          _notes: string
+          _treatment: string
+        }
+        Returns: string
+      }
       audit_patient_record_read: {
         Args: { _id: string; _table: string }
         Returns: boolean
@@ -315,6 +378,10 @@ export type Database = {
         }
       }
       list_doctor_consultations: { Args: never; Returns: Json }
+      list_patient_journal: {
+        Args: { _before?: string; _consultation_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "patient" | "doctor" | "admin"
