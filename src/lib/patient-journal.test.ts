@@ -43,4 +43,5 @@ test("journal rejects empty or oversized clinical input and unassigned sample wr
   assert.equal(validJournalEntry("", "", "x".repeat(10001)), false);
   assert.equal(validJournalEntry("x".repeat(1000), "x".repeat(4000), "x".repeat(10000)), true);
   assert.equal(doctorWorkspace.addJournalEntry("outsider", "", "", "Notes"), false);
+  assert.equal(doctorWorkspace.addJournalEntry("sample-2", "", "", "Unclaimed notes"), false);
 });
