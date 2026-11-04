@@ -40,7 +40,7 @@ export default function PatientWorkspace() {
   const own = useOwnTestBooking();
   const sampleStatus = own.id ? own.status?.status === "claimed" ? "claimed" : "pending" : fixedStatus;
   const doctorLabel = own.id ? own.status?.doctor_name || "Dr. Alex Morgan" : "Dr. Alex Morgan";
-  useBookingNotifications("patient", [], true, true);
+  useBookingNotifications("patient", own.id && own.status ? [{ id: own.id, status: own.status.status }] : [{ id: "sample-1", status: fixedStatus }], !own.id || !!own.status, true);
   const [profile, setProfile] = useState(state.profile);
   const [doctorInCall, setDoctorInCall] = useState(false);
   const [queueError, setQueueError] = useState(false);

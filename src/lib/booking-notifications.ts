@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { MOCK_LOGIN_ENABLED } from "./mock-login";
+import { bookingSound } from "./booking-sound";
 
 export type NotificationRole = "doctor" | "patient";
 export interface BookingNotification { id: string; message: string; createdAt: number; read: boolean }
@@ -11,6 +12,7 @@ export function notifyBooking(role: NotificationRole, key: string, message: stri
   const unique = `${role}:${key}`;
   if (delivered.has(unique)) return;
   delivered.add(unique);
+  bookingSound.play(role);
   notifications[role] = [{ id: unique, message, createdAt: Date.now(), read: false }, ...notifications[role]].slice(0, 50);
   listeners.forEach(fn => fn());
 }
