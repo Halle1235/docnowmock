@@ -40,9 +40,13 @@ export function useBookingSound(role: NotificationRole) {
   const state = useSyncExternalStore(bookingSound.subscribe, bookingSound.getSnapshot, bookingSound.getSnapshot);
   useEffect(() => {
     const unmount = bookingSound.mount(role);
-    const activate = () => { void bookingSound.activate(); };
-    window.addEventListener("pointerdown", activate, { once: true });
-    window.addEventListener("keydown", activate, { once: true });
+    const activate = (event: Event) => {
+      if (event.target instanceof Element && event.target.closest('[aria-label="Enable booking sounds"], [aria-label="Mute booking sounds"]')) return;
+      void bookingSound.activate();
+      window.removeEventListener("pointerdown", activate); window.removeEventListener("keydown", activate);
+    };
+    window.addEventListener("pointerdown", activate);
+    window.addEventListener("keydown", activate);
     return () => { unmount(); window.removeEventListener("pointerdown", activate); window.removeEventListener("keydown", activate); };
   }, [role]);
   return state;
