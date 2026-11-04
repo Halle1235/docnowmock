@@ -262,6 +262,10 @@ export type Database = {
         Args: { _id: string; _table: string }
         Returns: boolean
       }
+      audit_summary_draft_read: {
+        Args: { _consultation_id: string }
+        Returns: boolean
+      }
       claim_patient_consultation: {
         Args: { _consultation_id: string }
         Returns: undefined

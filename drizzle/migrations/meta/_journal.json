@@ -8,6 +8,13 @@
       "when": 1793760101260,
       "tag": "0000_patient_record_authorization_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793760229006,
+      "tag": "0001_patient_audit_read_path_hardening",
+      "breakpoints": true
     }
   ]
 }
