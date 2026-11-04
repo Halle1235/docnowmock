@@ -7,8 +7,7 @@ import { SummaryView, VisitSummary } from "@/components/VisitSummaryDialog";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { FileText, LogOut, Video } from "lucide-react";
-import { MOCK_LOGIN_ENABLED, DEMO_CALL_ID, demoCallPath } from "@/lib/mock-login";
-void DEMO_CALL_ID;
+import { MOCK_LOGIN_ENABLED, demoCallPath } from "@/lib/mock-login";
 
 interface Visit {
   id: string;
