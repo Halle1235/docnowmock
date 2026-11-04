@@ -9,6 +9,7 @@ import { Clock, User, LogOut, Video, CheckCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import VisitSummaryDialog from "@/components/VisitSummaryDialog";
+import { MOCK_LOGIN_ENABLED, SAMPLE_CONSULTATION, demoCallPath } from "@/lib/mock-login";
 
 interface Consultation {
   id: string;
@@ -35,6 +36,13 @@ const DoctorDashboard = () => {
   const [claimingId, setClaimingId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (MOCK_LOGIN_ENABLED) {
+      // Demo: sample patients only, no real records.
+      setUserEmail("Demo doctor");
+      setConsultations([SAMPLE_CONSULTATION as Consultation]);
+      setLoading(false);
+      return;
+    }
     checkAuth();
     loadConsultations();
 
@@ -130,8 +138,12 @@ const DoctorDashboard = () => {
   };
 
   const claimConsultation = async (consultationId: string) => {
+    if (MOCK_LOGIN_ENABLED) {
+      setConsultations((cs) => cs.map((c) => c.id === consultationId ? { ...c, status: "claimed" } : c));
+      return;
+    }
     setClaimingId(consultationId);
-    
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -166,11 +178,11 @@ const DoctorDashboard = () => {
   };
 
   const startVideo = (consultationId: string) => {
-    navigate(`/call/${consultationId}`);
+    navigate(MOCK_LOGIN_ENABLED ? demoCallPath("doctor") : `/call/${consultationId}`);
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    if (!MOCK_LOGIN_ENABLED) await supabase.auth.signOut();
     navigate("/auth");
   };
 
@@ -342,12 +354,12 @@ const DoctorDashboard = () => {
                               {t('dashboard.startVideo')}
                             </Button>
                           )}
-                          <VisitSummaryDialog
+                          {!MOCK_LOGIN_ENABLED && <VisitSummaryDialog
                             consultationId={consultation.id}
                             initialNotes={(consultation as any).notes}
                             initialSummary={(consultation as any).visit_summary}
                             onSaved={loadConsultations}
-                          />
+                          />}
                         </div>
                       </div>
                     </Card>
