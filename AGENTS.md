@@ -1,4 +1,5 @@
 # Architecture rules
+- In-app booking alerts derive from authorized reads; sample cross-tab acceptance signals contain only a fixed fictional visit ID and never update permissions, assignment, or clinical records.
 - Share fictional patient identities across sample queue, completed history, and journal to preserve ID-based continuity without seeding live records.
 - Patient journals use append-only server-derived patient/doctor identity and timestamp through authenticated audited RPCs; verified assigned doctors can read the patient's cross-visit timeline, while sample journals remain isolated in memory.
 - Patient sample profile, ratings, follow-ups, and visit documents stay in memory; PDF/QR output is explicitly non-clinical and never a real pharmacy verification or insurance claim.
