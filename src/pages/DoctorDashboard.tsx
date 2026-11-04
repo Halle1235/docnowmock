@@ -307,6 +307,16 @@ const DoctorDashboard = () => {
                               <p className="text-sm text-muted-foreground">
                                 {t('dashboard.phone')}: {consultation.profiles?.phone || t('dashboard.notProvided')}
                               </p>
+                              <p className="text-sm text-muted-foreground">
+                                Age: {consultation.profiles?.age ?? "Not provided"}
+                                {" · "}
+                                Allergies:{" "}
+                                {consultation.profiles?.allergies ? (
+                                  <span className="font-medium text-destructive">{consultation.profiles.allergies}</span>
+                                ) : (
+                                  "None reported"
+                                )}
+                              </p>
                             </div>
                           </div>
                           
@@ -369,6 +379,16 @@ const DoctorDashboard = () => {
                               <h4 className="font-semibold">{consultation.profiles?.full_name || t('dashboard.patient')}</h4>
                               <p className="text-sm text-muted-foreground">
                                 {t('dashboard.phone')}: {consultation.profiles?.phone || t('dashboard.notProvided')}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                Age: {consultation.profiles?.age ?? "Not provided"}
+                                {" · "}
+                                Allergies:{" "}
+                                {consultation.profiles?.allergies ? (
+                                  <span className="font-medium text-destructive">{consultation.profiles.allergies}</span>
+                                ) : (
+                                  "None reported"
+                                )}
                               </p>
                             </div>
                             {getStatusBadge(consultation.status)}
