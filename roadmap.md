@@ -1,5 +1,5 @@
 # Tasks
-- [ ] Require patient agreement and simulated payment before creating a paid follow-up; verify cancellation and duplicate prevention.
+- [x] Require patient agreement and simulated payment before creating a paid follow-up; verify cancellation, AED 249 payment readback, and duplicate prevention.
 - [x] Add sample queue status, health profile, prescription/receipt downloads, ratings, and follow-up rebooking to original My visits.
 - [x] Add camera/microphone checks and bounded in-call chat/photo/document sharing to original call screen.
 - [x] Verify patient flows, PDF downloads, two-person sharing, mobile layout, and sample-only data boundaries.
