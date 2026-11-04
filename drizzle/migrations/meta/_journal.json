@@ -15,6 +15,13 @@
       "when": 1793760229006,
       "tag": "0001_patient_audit_read_path_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793762453382,
+      "tag": "0002_consultation_room_terminal_guard",
+      "breakpoints": true
     }
   ]
 }
