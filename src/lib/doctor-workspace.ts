@@ -104,7 +104,7 @@ export const doctorWorkspace = {
   },
   addJournalEntry: (id: string, diagnosis: string, treatment: string, notes: string) => {
     const visit = snapshot.visits.find(v => v.id === id);
-    if (!visit || !["claimed", "in_progress"].includes(visit.status)) return false;
+    if (!MOCK_LOGIN_ENABLED || !visit || !["claimed", "in_progress", "completed"].includes(visit.status)) return false;
     return sampleJournal.add(visit.patientId, visit.id, diagnosis, treatment, notes);
   },
   startCall: (id: string, now = Date.now()) => updateVisit(id, v => v.status === "claimed" ? { ...v, status: "in_progress", startedAt: now } : v),

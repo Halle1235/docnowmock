@@ -32,7 +32,9 @@ test("ending a joined call marks Completed in history exactly once without disca
   assert.equal(visit.completedAt, 61000);
   assert.equal(visit.durationSeconds, 60);
   assert.equal(sampleJournal.getSnapshot().filter(e => e.patient_id === visit.patientId).length, 2);
-  assert.equal(doctorWorkspace.addJournalEntry(visitId, "", "", "Alter ended visit"), false);
+  assert.equal(doctorWorkspace.addJournalEntry(visitId, "", "", "Post-call documentation"), true);
+  assert.equal(doctorWorkspace.getSnapshot().visits.find(v => v.id === visitId)?.status, "completed");
+  assert.equal(sampleJournal.getSnapshot()[0].notes, "Post-call documentation");
 });
 test("journal rejects empty or oversized clinical input and unassigned sample writers", () => {
   assert.equal(validJournalEntry("", "", " "), false);
@@ -41,4 +43,5 @@ test("journal rejects empty or oversized clinical input and unassigned sample wr
   assert.equal(validJournalEntry("", "", "x".repeat(10001)), false);
   assert.equal(validJournalEntry("x".repeat(1000), "x".repeat(4000), "x".repeat(10000)), true);
   assert.equal(doctorWorkspace.addJournalEntry("outsider", "", "", "Notes"), false);
+  assert.equal(doctorWorkspace.addJournalEntry("sample-2", "", "", "Unclaimed notes"), false);
 });

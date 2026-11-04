@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Clock, User, LogOut, Video, CheckCircle } from "lucide-react";
@@ -34,12 +34,13 @@ interface Consultation {
 
 const LiveDoctorDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [userEmail, setUserEmail] = useState("");
-  const [journalId, setJournalId] = useState<string | null>(null);
+  const [journalId, setJournalId] = useState<string | null>(typeof location.state?.journalId === "string" ? location.state.journalId : null);
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const claimInFlight = useRef(false);
   const [historySearch, setHistorySearch] = useState("");
@@ -353,7 +354,7 @@ const LiveDoctorDashboard = () => {
           </div>
         </div>
       </div>
-      <Dialog open={!!journalId} onOpenChange={open => { if (!open) setJournalId(null); }}><DialogContent className="w-[calc(100%-2rem)] max-w-xl max-h-[90vh] overflow-y-auto" aria-describedby={undefined}><DialogHeader><DialogTitle>Patient medical journal</DialogTitle></DialogHeader>{journalId && <PatientJournal key={journalId} consultationId={journalId} canAdd={consultations.some(c => c.id === journalId && ["claimed", "in_progress"].includes(c.status))} />}</DialogContent></Dialog>
+      <Dialog open={!!journalId} onOpenChange={open => { if (!open) setJournalId(null); }}><DialogContent className="w-[calc(100%-2rem)] max-w-xl max-h-[90vh] overflow-y-auto" aria-describedby={undefined}><DialogHeader><DialogTitle>Patient medical journal</DialogTitle></DialogHeader>{journalId && <PatientJournal key={journalId} consultationId={journalId} canAdd={consultations.some(c => c.id === journalId && ["claimed", "in_progress", "completed"].includes(c.status))} />}</DialogContent></Dialog>
     </div>
   );
 };
