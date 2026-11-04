@@ -61,6 +61,11 @@ All colors MUST be HSL.
     --call-foreground: 0 0% 100%;
     --call-border: 217 33% 17%;
     --call-accent: 182 83% 35%;
+    /* Daily's external iframe accepts hex tokens only. */
+    --daily-accent: #0FA0A5;
+    --daily-foreground: #FFFFFF;
+    --daily-background: #0F172A;
+    --daily-border: #1E293B;
     --preview-background: 210 18% 93%;
   }
 
