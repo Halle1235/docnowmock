@@ -9,6 +9,8 @@ import { useTranslation } from "react-i18next";
 import { FileText, LogOut, Video } from "lucide-react";
 import { MOCK_LOGIN_ENABLED, demoCallPath } from "@/lib/mock-login";
 import PatientWorkspace from "@/components/PatientWorkspace";
+import BookingNotifications from "@/components/BookingNotifications";
+import { useBookingNotifications } from "@/hooks/use-booking-notifications";
 
 interface Visit {
   id: string;
@@ -24,6 +26,7 @@ const LiveMyVisits = () => {
   const { t } = useTranslation();
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
+  useBookingNotifications("patient", visits, !loading);
 
   const [doctorInCall, setDoctorInCall] = useState(false);
 
@@ -48,12 +51,12 @@ const LiveMyVisits = () => {
     }
     let userId = "";
     const load = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("consultations")
         .select("id, created_at, reason_category, status, visit_summary, visit_summary_approved_at")
         .eq("patient_id", userId)
         .order("created_at", { ascending: false });
-      setVisits((data as unknown as Visit[]) || []);
+      if (!error) setVisits((data as unknown as Visit[]) || []);
       setLoading(false);
     };
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -75,6 +78,7 @@ const LiveMyVisits = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-primary cursor-pointer" onClick={() => navigate("/")}>{t("header.brand")}</h1>
           <div className="flex items-center gap-2">
+            <BookingNotifications role="patient" />
             <LanguageSwitcher />
             <Button variant="ghost" size="sm" onClick={async () => { if (!MOCK_LOGIN_ENABLED) await supabase.auth.signOut(); navigate("/"); }}>
               <LogOut className="h-4 w-4 me-2" />{t("header.logout")}

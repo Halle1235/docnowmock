@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import { MOCK_LOGIN_ENABLED } from "./mock-login";
 import { sampleJournal } from "./patient-journal";
 import { SAMPLE_PATIENTS } from "./sample-patients";
+import { notifySampleAcceptance } from "./booking-notifications";
 
 export interface PrescriptionDraft {
   medicine: string;
@@ -87,6 +88,7 @@ export const doctorWorkspace = {
   claim: (id: string) => {
     if (!MOCK_LOGIN_ENABLED || !snapshot.available || !snapshot.visits.some(v => v.id === id && v.status === "pending")) return false;
     updateVisit(id, v => v.status === "pending" ? { ...v, status: "claimed" } : v);
+    notifySampleAcceptance(id);
     return true;
   },
   saveDraft: (id: string, notes: string, prescriptions: PrescriptionDraft[]) => {

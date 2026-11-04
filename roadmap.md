@@ -1,4 +1,5 @@
 # Tasks
+- [ ] Expand Amina's fictional journal over two months and add in-app doctor arrival / patient acceptance alerts; verify sample flows and safe live-read integration.
 - [x] Inspect deployed atomic claiming, improve competing-claim feedback, and verify three named sample patients with searchable journal history; 21 focused tests and browser checks pass.
 - [ ] Run real competing-doctor claim requests — blocked by zero verified doctor accounts and mock-only login mode; deployed atomic guard inspected, sample competing claims tested.
 - [x] Add automatic completed history and patient journal timeline, persistent authorized clinical notes, security tests, and sample-flow checks.

@@ -14,6 +14,8 @@ import PatientJournal from "@/components/PatientJournal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import DoctorWorkspace from "@/components/DoctorWorkspace";
 import { MOCK_LOGIN_ENABLED, SAMPLE_CONSULTATION, demoCallPath } from "@/lib/mock-login";
+import BookingNotifications from "@/components/BookingNotifications";
+import { useBookingNotifications } from "@/hooks/use-booking-notifications";
 
 interface Consultation {
   id: string;
@@ -41,6 +43,7 @@ const LiveDoctorDashboard = () => {
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const claimInFlight = useRef(false);
   const [historySearch, setHistorySearch] = useState("");
+  useBookingNotifications("doctor", consultations, !loading);
 
   useEffect(() => {
     if (MOCK_LOGIN_ENABLED) {
@@ -196,6 +199,7 @@ const LiveDoctorDashboard = () => {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-primary">{t('header.doctors')}</h1>
             <div className="flex items-center gap-4">
+              <BookingNotifications role="doctor" />
               <LanguageSwitcher />
               <span className="text-sm text-muted-foreground">{userEmail}</span>
               <Button variant="ghost" size="sm" onClick={handleLogout}>

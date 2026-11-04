@@ -15,10 +15,13 @@ import { dailyStats, doctorWorkspace, isLongWait, patientAge, searchHistory, use
 import { demoCallPath } from "@/lib/mock-login";
 import { usePatientWorkspace } from "@/lib/patient-workspace";
 import { toast } from "sonner";
+import BookingNotifications from "./BookingNotifications";
+import { useBookingNotifications } from "@/hooks/use-booking-notifications";
 
 export default function DoctorWorkspace() {
   const navigate = useNavigate();
   const state = useDoctorWorkspace();
+  useBookingNotifications("doctor", state.visits, true, true);
   const patient = usePatientWorkspace();
   const [now, setNow] = useState(Date.now());
   const [search, setSearch] = useState("");
@@ -57,7 +60,7 @@ export default function DoctorWorkspace() {
     <div className="flex flex-wrap justify-between items-center gap-3 border-t pt-4"><span className="text-xs text-muted-foreground">{new Date(v.createdAt).toLocaleString()}</span>{v.status === "pending" ? <Button disabled={!state.available} onClick={() => { if (!doctorWorkspace.claim(v.id)) toast.error("Consultation is no longer available"); }}>Take consultation</Button> : <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setSelectedId(v.id)}><FileText className="h-4 w-4 me-2" />Notes & prescription</Button><Button onClick={() => navigate(`${demoCallPath("doctor")}&visit=${encodeURIComponent(v.id)}`)}><Video className="h-4 w-4 me-2" />{v.status === "in_progress" ? "Return to call" : "Start video"}</Button></div>}</div>
   </Card>;
   return <div className="min-h-screen bg-background">
-    <header className="border-b bg-card"><div className="container px-4 py-4 flex flex-wrap justify-between items-center gap-3"><h1 className="text-2xl font-bold text-primary">DocNow · Doctors</h1><div className="flex items-center gap-2"><LanguageSwitcher /><Button variant="ghost" size="sm" onClick={() => navigate("/auth")}><LogOut className="h-4 w-4 me-2" />Log out</Button></div></div></header>
+    <header className="border-b bg-card"><div className="container px-4 py-4 flex flex-wrap justify-between items-center gap-3"><h1 className="text-2xl font-bold text-primary">DocNow · Doctors</h1><div className="flex items-center gap-2"><BookingNotifications role="doctor" /><LanguageSwitcher /><Button variant="ghost" size="sm" onClick={() => navigate("/auth")}><LogOut className="h-4 w-4 me-2" />Log out</Button></div></div></header>
     <main className="container max-w-6xl px-4 py-8 space-y-7">
       <div className="flex flex-wrap justify-between items-start gap-4"><div><h2 className="text-3xl font-bold">Doctor dashboard</h2><p className="text-sm text-muted-foreground mt-2">Sample mode · Fictional patients · Drafts reset on refresh</p></div><div className="flex items-center gap-3"><label htmlFor="doctor-available" className="font-medium">{state.available ? "Online" : "Offline"}</label><Switch id="doctor-available" checked={state.available} onCheckedChange={doctorWorkspace.setAvailable} aria-label="Doctor online" /></div></div>
       <section aria-label="Daily statistics" className="grid grid-cols-2 md:grid-cols-4 gap-5 border-y py-5"><div><p className="text-sm text-muted-foreground">Completed today</p><p className="text-3xl font-semibold mt-2">{stats.completed}</p></div><div><p className="text-sm text-muted-foreground">Average call length</p><p className="text-3xl font-semibold mt-2">{stats.averageSeconds === null ? "—" : `${Math.floor(stats.averageSeconds / 60)}:${String(stats.averageSeconds % 60).padStart(2, "0")}`}</p></div><div><p className="text-sm text-muted-foreground">Waiting</p><p className="text-3xl font-semibold mt-2">{pending.length}</p></div><div><p className="text-sm text-muted-foreground">Waiting 5+ minutes</p><p className="text-3xl font-semibold mt-2 text-destructive">{pending.filter(v => isLongWait(v, now)).length}</p></div></section>

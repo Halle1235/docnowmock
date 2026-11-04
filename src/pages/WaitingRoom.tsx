@@ -8,6 +8,8 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import PrejoinCameraCheck from "@/components/video/PrejoinCameraCheck";
 import { DEMO_CALL_ID, MOCK_LOGIN_ENABLED, demoCallPath } from "@/lib/mock-login";
 import { usePatientWorkspace } from "@/lib/patient-workspace";
+import BookingNotifications from "@/components/BookingNotifications";
+import { useBookingNotifications } from "@/hooks/use-booking-notifications";
 
 interface ConsultationData { id: string; status: string; room_url?: string | null; reason_description?: string | null }
 interface DoctorInfo { full_name: string; avatar_url?: string; specialization?: string; is_verified?: boolean }
@@ -21,6 +23,7 @@ const WaitingRoom = () => {
   const [queue, setQueue] = useState<QueueData | null>(null);
   const [ready, setReady] = useState(false); const [loading, setLoading] = useState(!isSample);
   const [error, setError] = useState("");
+  useBookingNotifications("patient", consultation ? [consultation] : [], !loading, isSample);
   useEffect(() => {
     let active = true; let fetching = false;
     const load = async () => {
@@ -55,7 +58,7 @@ const WaitingRoom = () => {
   const canJoin = ready && (isSample ? !!visit : !!consultation);
   const wait = ready ? "Ready now" : isSample ? "~3 mins" : queue ? queue.estimated_minutes < 3 ? "< 3 mins" : `~${queue.estimated_minutes} mins` : "—";
   return <div className="min-h-screen bg-lounge">
-    <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur"><div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-6"><div className="flex items-center gap-2 text-primary"><HeartPulse className="h-7 w-7" /><span className="text-xl font-bold">DocNow</span><span className="ms-3 hidden items-center gap-1 border-s ps-4 text-xs text-muted-foreground md:flex"><ShieldCheck className="h-4 w-4" />{isSample ? "Sample consultation" : "Patient consultation"}</span></div><nav className="flex items-center gap-1"><Button variant="ghost" size="sm" onClick={() => navigate("/my-visits")}>My visits</Button><LanguageSwitcher /></nav></div></header>
+    <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur"><div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-6"><div className="flex items-center gap-2 text-primary"><HeartPulse className="h-7 w-7" /><span className="text-xl font-bold">DocNow</span><span className="ms-3 hidden items-center gap-1 border-s ps-4 text-xs text-muted-foreground md:flex"><ShieldCheck className="h-4 w-4" />{isSample ? "Sample consultation" : "Patient consultation"}</span></div><nav className="flex items-center gap-1"><BookingNotifications role="patient" /><Button variant="ghost" size="sm" onClick={() => navigate("/my-visits")}>My visits</Button><LanguageSwitcher /></nav></div></header>
     <main className="mx-auto max-w-6xl px-4 py-7 sm:px-6 lg:py-10">
       <Button variant="ghost" size="sm" className="mb-5 px-0" onClick={() => navigate("/my-visits")}><ArrowLeft className="me-2 h-4 w-4" />Back to my visits</Button>
       <div className="mb-7"><p className="mb-2 text-sm font-medium text-primary">YOUR CONSULTATION</p><h1 className="text-3xl font-semibold">Waiting room</h1><p className="mt-2 text-sm text-muted-foreground">{ready ? "Your doctor is ready to see you." : "Your doctor will be with you shortly."}</p></div>

@@ -17,6 +17,8 @@ import { buildVisitPdf } from "@/lib/visit-pdf";
 import { deliverFile } from "@/lib/file-download";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import BookingNotifications from "./BookingNotifications";
+import { useBookingNotifications } from "@/hooks/use-booking-notifications";
 
 function VisitDownload({ visit, kind }: { visit: PatientVisit; kind: "prescription" | "receipt" }) {
   const [blob, setBlob] = useState<Blob | null>(null);
@@ -32,6 +34,7 @@ function Rating({ visit }: { visit: PatientVisit }) {
 export default function PatientWorkspace() {
   const navigate = useNavigate(); const [params] = useSearchParams();
   const state = usePatientWorkspace();
+  useBookingNotifications("patient", [], true, true);
   const [profile, setProfile] = useState(state.profile);
   const [doctorInCall, setDoctorInCall] = useState(false);
   const [queueError, setQueueError] = useState(false);
@@ -47,7 +50,7 @@ export default function PatientWorkspace() {
     void check(); const timer = setInterval(check, 4000); return () => { active = false; clearInterval(timer); };
   }, []);
   return <div className="min-h-screen bg-background">
-    <header className="border-b bg-card"><div className="container px-4 py-4 flex items-center justify-between gap-2"><h1 className="text-2xl font-bold text-primary">DocNow · Patients</h1><div className="flex items-center gap-2"><LanguageSwitcher /><Button variant="ghost" size="sm" onClick={() => navigate("/auth")}><LogOut className="h-4 w-4 me-2" />Log out</Button></div></div></header>
+    <header className="border-b bg-card"><div className="container px-4 py-4 flex flex-wrap items-center justify-between gap-2"><h1 className="text-2xl font-bold text-primary">DocNow · Patients</h1><div className="flex items-center gap-2"><BookingNotifications role="patient" /><LanguageSwitcher /><Button variant="ghost" size="sm" onClick={() => navigate("/auth")}><LogOut className="h-4 w-4 me-2" />Log out</Button></div></div></header>
     <main className="container max-w-5xl px-4 py-8 space-y-7">
       <div><h2 className="text-3xl font-bold">My visits</h2><p className="text-sm text-muted-foreground mt-2">Sample mode · No real payments or clinical documents · Changes reset on refresh</p></div>
       {params.get("verify") && <section role="status" className="border border-destructive rounded-lg p-5 space-y-2"><h3 className="font-semibold">Not a valid prescription</h3><p className="text-sm">This QR belongs to a sample document. No prescription has been issued, signed, or verified. Do not dispense medicine against it.</p></section>}
