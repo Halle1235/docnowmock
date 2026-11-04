@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { describe, test } from "node:test";
 import { strict as assert } from "node:assert";
 import { isMockRole, MOCK_LOGIN_ENABLED, mockLoginDestination } from "./mock-login";
