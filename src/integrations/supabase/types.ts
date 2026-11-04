@@ -68,6 +68,7 @@ export type Database = {
           privacy_consent_at: string | null
           reason_category: string | null
           reason_description: string | null
+          room_closed_at: string | null
           room_url: string | null
           scheduled_at: string | null
           status: string
@@ -95,6 +96,7 @@ export type Database = {
           privacy_consent_at?: string | null
           reason_category?: string | null
           reason_description?: string | null
+          room_closed_at?: string | null
           room_url?: string | null
           scheduled_at?: string | null
           status?: string
@@ -122,6 +124,7 @@ export type Database = {
           privacy_consent_at?: string | null
           reason_category?: string | null
           reason_description?: string | null
+          room_closed_at?: string | null
           room_url?: string | null
           scheduled_at?: string | null
           status?: string

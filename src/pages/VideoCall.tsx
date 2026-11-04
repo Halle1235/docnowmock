@@ -27,6 +27,9 @@ const VideoCall = () => {
   const [endOpen, setEndOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [recordReason, setRecordReason] = useState("");
+  const [roomExpired, setRoomExpired] = useState(false);
+  const [liveDoctor, setLiveDoctor] = useState(false);
+  const [ending, setEnding] = useState(false);
   const [callError, setCallError] = useState(false);
   const patientState = usePatientWorkspace();
   const [searchParams] = useSearchParams();
@@ -210,7 +213,11 @@ const VideoCall = () => {
     const tryStart = async () => {
       try {
         const { data: record } = await supabase.rpc("get_authorized_call_record", { _consultation_id: consultationId });
-        if (!cancelled && record && typeof record === "object" && "reason_description" in record) setRecordReason(String(record.reason_description || ""));
+        if (!cancelled && record && typeof record === "object" && "reason_description" in record) {
+          setRecordReason(String(record.reason_description || ""));
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!cancelled) setLiveDoctor(!!session && record.doctor_id === session.user.id);
+        }
         const { data, error } = await supabase.functions.invoke("create-daily-room", {
           body: { consultationId },
         });
@@ -220,6 +227,7 @@ const VideoCall = () => {
         if (error) {
           const ctx: any = (error as any).context;
           const status = ctx?.status;
+          if (status === 410) { setRoomExpired(true); setLoading(false); return; }
           if (status === 409) {
             setWaitingForDoctor(true);
             setLoading(false);
@@ -258,6 +266,7 @@ const VideoCall = () => {
           filter: `id=eq.${consultationId}`,
         },
         (payload) => {
+          if (["completed", "cancelled"].includes((payload.new as any)?.status)) { void callRef.current?.leave(); setRoomExpired(true); return; }
           const url = (payload.new as any)?.room_url;
           console.log("[VideoCall] Realtime update; room_url=", url);
           // Private rooms need a personal token, so fetch it via the function
@@ -280,6 +289,13 @@ const VideoCall = () => {
   }, [consultationId, navigate, isDemo, demoRole, visitId]);
 
   const leave = async () => {
+    if (ending) return;
+    if (!isDemo && liveDoctor && consultationId) {
+      setEnding(true);
+      const { error } = await supabase.functions.invoke("create-daily-room", { body: { consultationId, action: "end" } });
+      setEnding(false);
+      if (error) { toast.error("Room closure could not be confirmed. Please retry ending the consultation."); return; }
+    }
     if (isDemo && demoRole === "doctor") doctorWorkspace.finishCall(visitId);
     if (callRef.current) {
       try { await callRef.current.leave(); } catch {}
@@ -300,6 +316,7 @@ const VideoCall = () => {
     <main className="flex-1 relative bg-call min-w-0 min-h-0">
       <div ref={containerRef} className="absolute inset-0" />
       {loading && <div className="absolute inset-0 flex items-center justify-center bg-call text-call-foreground"><div className="text-center space-y-3"><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /><p>Connecting…</p></div></div>}
+      {roomExpired && <div className="absolute inset-0 flex items-center justify-center bg-lounge"><div className="space-y-4 px-5 text-center"><h2 className="text-xl font-semibold">Consultation room expired</h2><p className="text-sm text-muted-foreground">This consultation has ended. The old room link cannot be reused.</p><Button onClick={() => navigate("/my-visits")}>My visits</Button></div></div>}
       {!loading && callError && <div className="absolute inset-0 flex items-center justify-center bg-lounge"><div className="space-y-4 px-5 text-center"><h2 className="text-xl font-semibold">Unable to connect</h2><p className="text-sm text-muted-foreground">Check your connection and return to try again.</p><Button variant="outline" onClick={() => navigate(isDemo && demoRole === "doctor" ? "/doctor-dashboard" : `/waiting-room?id=${consultationId}&visit=${visitId}`)}>Return and try again</Button></div></div>}
       {!loading && waitingForDoctor && <div className="absolute inset-0 flex items-center justify-center bg-lounge"><div className="text-center space-y-4 max-w-sm px-5"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent text-primary"><Stethoscope className="h-8 w-8" /></div><h2 className="text-xl font-semibold">Doctor is preparing the room</h2><p className="text-muted-foreground text-sm">Your consultation will connect as soon as your doctor is ready.</p><Button variant="outline" onClick={() => navigate(`/waiting-room?id=${isDemo ? DEMO_CALL_ID : consultationId}&visit=${visitId}`)}>Return to device check</Button></div></div>}
     </main>

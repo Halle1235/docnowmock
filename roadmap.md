@@ -1,4 +1,6 @@
 # Tasks
+- [x] Expire/delete rooms through doctor-confirmed ending, reject ended/expired/deleted links, prevent reopening ended visits, and test shutdown/retry behavior.
+- [ ] Provider cleanup for status changes outside the call-ending action and unattended retry delivery — blocked by unavailable managed authenticated database-webhook setup; those statuses deny new app credentials immediately, but provider cleanup is not guaranteed until room lifetime expiry.
 - [x] Add and run actual room-handler tests with synthetic service boundaries for assigned participants, outsiders, anonymous access, and room-scoped credentials; rerun deployed permission checks. Signed-in end-to-end testing remains blocked below.
 - [x] Redesign original waiting room and call screens with camera/mic selectors, truthful status badges, call timer, details drawer, and end-call confirmation; verify a two-person sample call at 360px and desktop.
 - [x] Require patient agreement and simulated payment before creating a paid follow-up; verify cancellation, AED 249 payment readback, and duplicate prevention.

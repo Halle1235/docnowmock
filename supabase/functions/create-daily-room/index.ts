@@ -10,7 +10,9 @@ Deno.serve(async (req) => {
     const DAILY_API_KEY = Deno.env.get("DAILY_API_KEY");
     if (!DAILY_API_KEY) throw new Error("DAILY_API_KEY not configured");
 
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+
+    if (!SUPABASE_URL) throw new Error("Backend not configured");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -20,7 +22,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") || "", {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: userData, error: userErr } = await userClient.auth.getUser();
@@ -57,9 +59,36 @@ Deno.serve(async (req) => {
     }
 
     const isDoctor = consult.doctor_id === userData.user.id;
+    const roomNameFromUrl = (url: string) => {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "https:" || !parsed.hostname.endsWith(".daily.co") || !/^\/[a-zA-Z0-9_-]+$/.test(parsed.pathname)) throw new Error("Invalid room URL");
+      return parsed.pathname.slice(1);
+    };
+    if (body.action === "end") {
+      if (!isDoctor) return new Response(JSON.stringify({ error: "Only the assigned doctor may end the consultation" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // Close authorization first. If provider cleanup fails, retries cannot reopen the visit.
+      if (!["completed", "cancelled"].includes(consult.status)) {
+        const { error } = await userClient.from("consultations").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", consultationId);
+        if (error) throw new Error("Could not end consultation");
+      }
+      if (consult.room_url) {
+        const name = roomNameFromUrl(consult.room_url);
+        const expired = await fetch(`https://api.daily.co/v1/rooms/${name}`, {
+          method: "POST", headers: { Authorization: `Bearer ${DAILY_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ properties: { exp: Math.floor(Date.now() / 1000), eject_at_room_exp: true } }),
+        });
+        await expired.text();
+        if (!expired.ok && expired.status !== 404) throw new Error("Consultation ended, but room cleanup failed. Retry ending the call.");
+        const deleted = await fetch(`https://api.daily.co/v1/rooms/${name}`, { method: "DELETE", headers: { Authorization: `Bearer ${DAILY_API_KEY}` } });
+        await deleted.text();
+        if (!deleted.ok && deleted.status !== 404) throw new Error("Consultation ended, but room cleanup failed. Retry ending the call.");
+      }
+      return new Response(JSON.stringify({ ended: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (body.action && body.action !== "join") return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     if (!["claimed", "in_progress"].includes(consult.status)) {
       return new Response(JSON.stringify({ error: "Consultation is not active" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     const makeToken = async (roomName: string) => {
@@ -82,7 +111,11 @@ Deno.serve(async (req) => {
     };
 
     if (consult.room_url) {
-      const existingName = new URL(consult.room_url).pathname.replace(/^\//, "");
+      const existingName = roomNameFromUrl(consult.room_url);
+      const roomResponse = await fetch(`https://api.daily.co/v1/rooms/${existingName}`, { headers: { Authorization: `Bearer ${DAILY_API_KEY}` } });
+      const room = await roomResponse.json();
+      if (roomResponse.status === 404 || (roomResponse.ok && Number(room.config?.exp) > 0 && Number(room.config.exp) <= Math.floor(Date.now() / 1000))) return new Response(JSON.stringify({ error: "Consultation room has expired" }), { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (!roomResponse.ok) throw new Error("Could not verify room availability");
       const token = await makeToken(existingName);
       return new Response(JSON.stringify({ url: consult.room_url, token }), {
         status: 200,
@@ -112,6 +145,7 @@ Deno.serve(async (req) => {
         privacy: "private",
         properties: {
           exp,
+          eject_at_room_exp: true,
           enable_chat: true,
           enable_screenshare: true,
           start_video_off: false,

@@ -14,3 +14,4 @@
 - Call details use a responsive drawer, and elapsed time starts on joining; status badges must reflect verified integrations rather than presentation claims.
 - Daily presentation adapts global CSS hex tokens because its iframe rejects HSL strings; keep call audio initially muted through the shared presentation options.
 - Room handler tests execute the real edge source with synthetic auth/RPC/video-provider boundaries; keep deployed permission checks separate so mocked tests are never represented as signed-in end-to-end verification.
+- Real doctor-confirmed endings close consultation authorization before provider expiration/deletion; terminal visits cannot reopen, and rejoin checks provider expiry before issuing credentials. Failed provider cleanup must remain visible and retryable.
