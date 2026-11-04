@@ -1,4 +1,7 @@
 # Tasks
+- [ ] Add patient queue status, health profile, prescription/receipt downloads, ratings, and follow-up rebooking to original My visits in sample mode.
+- [ ] Add camera/microphone checks and bounded in-call chat/photo/document sharing to original call screen.
+- [ ] Verify patient flows, downloads, sharing, and sample-only security boundaries.
 - [x] Restrict live patient-record access by verified doctor assignment or administrator role while preserving patient self-access.
 - [x] Add protected access/change auditing and verify deployed database permission rules.
 - [ ] Verify authenticated doctor/admin record reads, edits, and audit readback end-to-end — blocked by mock-only login mode and no requesting-user auth account.
