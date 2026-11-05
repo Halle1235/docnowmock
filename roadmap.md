@@ -1,4 +1,5 @@
 # Tasks
+- [ ] Make booking notification sounds enabled by default while respecting browser audio restrictions.
 - [ ] Add a verified emergency warning and international calling-code selector to booking; test phone formatting and signed-in form.
 - [x] Handle duplicate doctor account emails safely; six handler tests and signed-in admin conflict feedback verified without changing existing accounts.
 - [x] Add admin logout and editing of user names and phone numbers; signed-in rename/save/readback/restoration and protected-route logout verified.
