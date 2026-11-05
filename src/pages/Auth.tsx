@@ -8,24 +8,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Shield, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { MOCK_LOGIN_ENABLED, mockLoginDestination } from "@/lib/mock-login";
-
-// Send each signed-in user to the page that fits their role.
-const routeForUser = async (userId: string) => {
-  const { data } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId);
-  const roles = (data ?? []).map((r) => r.role as string);
-  if (roles.includes("admin")) return "/admin";
-  if (roles.includes("doctor")) return "/doctor-dashboard";
-  return "/my-visits";
-};
+import { useAccount } from "@/components/AccountProvider";
+import { accountDestination } from "@/lib/account-access";
+import SocialSignIn from "@/components/SocialSignIn";
 
 const Auth = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const isPatient = searchParams.get("as") === "patient";
+  const isPatient = searchParams.get("as") !== "doctor";
+  const signingUp = searchParams.get("mode") === "signup";
+  const { user, access, loading: checking } = useAccount();
+  const [fullName, setFullName] = useState("");
+  const [sent, setSent] = useState(false);
   const { toast } = useToast();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
@@ -33,39 +27,25 @@ const Auth = () => {
   const [password, setPassword] = useState("");
 
   useEffect(() => {
-    if (MOCK_LOGIN_ENABLED) return;
-    const go = async (userId: string) => navigate(await routeForUser(userId), { replace: true });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) go(session.user.id);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // Defer the database call so it doesn't run inside the auth callback.
-        setTimeout(() => go(session.user.id), 0);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    if (checking || !user || !access) return;
+    navigate(!isPatient && access === "patient" ? "/doctor/register" : accountDestination(access), { replace: true });
+  }, [user, access, checking, navigate, isPatient]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (MOCK_LOGIN_ENABLED) {
-      setPassword("");
-      navigate(mockLoginDestination(isPatient ? "patient" : "doctor"));
-      return;
-    }
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
+      if (signingUp) {
+        const { data, error } = await supabase.auth.signUp({ email: email.trim(), password,
+          options: { emailRedirectTo: `${window.location.origin}/auth?as=${isPatient ? "patient" : "doctor"}`, data: { full_name: fullName.trim() } } });
+        if (error) throw error;
+        setPassword("");
+        if (!data.session) { setSent(true); return; }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        if (error) throw error;
+      }
 
       toast({
         title: t('auth.welcomeBack'),
@@ -100,20 +80,16 @@ const Auth = () => {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
               {isPatient ? <User className="w-8 h-8 text-primary" /> : <Shield className="w-8 h-8 text-primary" />}
             </div>
-            <h2 className="text-3xl font-bold mb-2">{isPatient ? t('auth.patientTitle') : t('auth.title')}</h2>
+            <h2 className="text-3xl font-bold mb-2">{signingUp ? "Create account" : isPatient ? t('auth.patientTitle') : t('auth.title')}</h2>
             <p className="text-muted-foreground">
               {isPatient ? t('auth.patientSubtitle') : t('auth.subtitle')}
             </p>
           </div>
 
           <div className="bg-card p-8 rounded-xl border shadow-sm">
-            {MOCK_LOGIN_ENABLED && <p className="mb-4 text-sm text-muted-foreground">Demo login · No real account required</p>}
-            {isPatient && (
-              <p className="mb-6 rounded-lg bg-accent/50 p-3 text-sm text-muted-foreground">
-                {t('auth.patientHint')}
-              </p>
-            )}
-            <form onSubmit={handleLogin} className="space-y-4">
+
+            {sent ? <div className="space-y-4"><p role="status">Check your email to confirm your account before signing in.</p><Button variant="outline" onClick={() => { setSent(false); setSearchParams({ as: isPatient ? "patient" : "doctor" }); }}>Back to sign in</Button></div> : <form onSubmit={handleLogin} className="space-y-4">
+              {signingUp && <div className="space-y-2"><Label htmlFor="signup-name">Full name</Label><Input id="signup-name" required minLength={2} maxLength={120} value={fullName} onChange={e => setFullName(e.target.value)} /></div>}
               <div className="space-y-2">
                 <Label htmlFor="login-email">{t('auth.email')}</Label>
                 <Input
@@ -130,6 +106,8 @@ const Auth = () => {
               <div className="space-y-2">
                 <Label htmlFor="login-password">{t('auth.password')}</Label>
                 <Input
+                  minLength={signingUp ? 10 : undefined}
+                  autoComplete={signingUp ? "new-password" : "current-password"}
                   id="login-password"
                   type="password"
                   placeholder={t('auth.passwordPlaceholder')}
@@ -141,7 +119,7 @@ const Auth = () => {
               </div>
 
               <Button type="submit" className="w-full h-12" disabled={loading}>
-                {loading ? t('auth.loggingIn') : t('auth.loginButton')}
+                {loading ? "Please wait…" : signingUp ? "Create account" : t('auth.loginButton')}
               </Button>
 
               <div className="text-center">
@@ -157,16 +135,15 @@ const Auth = () => {
 
               {!isPatient && (
                 <p className="text-center text-xs text-muted-foreground">
-                  Doctor accounts are created by DocNow administrators.
+                  Doctor accounts require administrator licence approval.
                 </p>
               )}
-            </form>
+              <Button type="button" variant="link" className="w-full" onClick={() => setSearchParams({ as: isPatient ? "patient" : "doctor", mode: signingUp ? "login" : "signup" })}>{signingUp ? "Already have an account? Sign in" : "Create an account"}</Button>
+              <SocialSignIn />
+            </form>}
           </div>
 
           <div className="mt-6 flex flex-col items-center gap-2 text-center">
-            {MOCK_LOGIN_ENABLED && !isPatient && (
-              <Button variant="link" onClick={() => navigate(mockLoginDestination("admin"))}>Admin preview</Button>
-            )}
             {!isPatient && (
               <Button
                 variant="link"

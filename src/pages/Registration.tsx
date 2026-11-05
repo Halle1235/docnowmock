@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,10 +6,14 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { supabase } from "@/integrations/supabase/client";
+import { useAccount } from "@/components/AccountProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 const Registration = () => {
   const navigate = useNavigate();
+  const { user } = useAccount();
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const { t } = useTranslation();
   const [passportNumber, setPassportNumber] = useState("");
@@ -18,7 +22,15 @@ const Registration = () => {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!user) return;
+    setEmail(user.email || "");
+    supabase.from("profiles").select("full_name, phone, passport_number, date_of_birth").eq("id", user.id).maybeSingle().then(({ data }) => {
+      if (!data) return;
+      setFullName(data.full_name); setPhone(data.phone || ""); setPassportNumber(data.passport_number || ""); setDateOfBirth(data.date_of_birth || "");
+    });
+  }, [user]);
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!passportNumber || !fullName || !dateOfBirth || !email || !phone) {
@@ -30,21 +42,11 @@ const Registration = () => {
       return;
     }
 
-    // Store registration data in sessionStorage
-    const formData = {
-      fullName,
-      dateOfBirth,
-      passportNumber,
-      email,
-      phone
-    };
-    sessionStorage.setItem("registrationData", JSON.stringify(formData));
-    
-    toast({
-      title: t('registration.verificationComplete'),
-      description: t('registration.proceedingToPayment'),
-    });
-    
+    if (!user) return;
+    setSaving(true);
+    const { error } = await supabase.from("profiles").update({ full_name: fullName.trim(), phone: phone.trim(), passport_number: passportNumber.trim(), date_of_birth: dateOfBirth }).eq("id", user.id);
+    setSaving(false);
+    if (error) { toast({ title: "Could not save details", description: error.message, variant: "destructive" }); return; }
     navigate("/medical-reason");
   };
 
@@ -127,6 +129,7 @@ const Registration = () => {
               <div className="space-y-2">
                 <Label htmlFor="email">{t('registration.email')} *</Label>
                 <Input
+                  readOnly
                   id="email"
                   type="email"
                   placeholder={t('registration.emailPlaceholder')}
@@ -157,7 +160,7 @@ const Registration = () => {
                 </p>
               </div>
 
-              <Button type="submit" className="w-full h-12 text-base" size="lg">
+              <Button disabled={saving} type="submit" className="w-full h-12 text-base" size="lg">
                 {t('registration.continueButton')}
               </Button>
             </form>

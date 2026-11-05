@@ -7,8 +7,8 @@ import { SummaryView, VisitSummary } from "@/components/VisitSummaryDialog";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { FileText, LogOut, Video } from "lucide-react";
-import { MOCK_LOGIN_ENABLED, demoCallPath } from "@/lib/mock-login";
-import PatientWorkspace from "@/components/PatientWorkspace";
+
+
 import BookingNotifications from "@/components/BookingNotifications";
 import { useBookingNotifications } from "@/hooks/use-booking-notifications";
 
@@ -28,27 +28,7 @@ const LiveMyVisits = () => {
   const [loading, setLoading] = useState(true);
   useBookingNotifications("patient", visits, !loading);
 
-  const [doctorInCall, setDoctorInCall] = useState(false);
-
   useEffect(() => {
-    if (!MOCK_LOGIN_ENABLED) return;
-    let active = true;
-    const check = async () => {
-      const { data } = await supabase.functions.invoke("demo-call-room", { body: { action: "status" } });
-      if (active) setDoctorInCall(!!data?.doctorInCall);
-    };
-    check();
-    const id = setInterval(check, 4000);
-    return () => { active = false; clearInterval(id); };
-  }, []);
-
-  useEffect(() => {
-    if (MOCK_LOGIN_ENABLED) {
-      // Demo: one sample visit, no real records.
-      setVisits([{ id: "sample-1", created_at: new Date().toISOString(), reason_category: null, status: "claimed", visit_summary: null, visit_summary_approved_at: null }]);
-      setLoading(false);
-      return;
-    }
     let userId = "";
     const load = async () => {
       const { data, error } = await supabase
@@ -60,9 +40,9 @@ const LiveMyVisits = () => {
       setLoading(false);
     };
     let channel: ReturnType<typeof supabase.channel> | null = null;
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) { navigate("/auth"); return; }
-      userId = session.user.id;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) { navigate("/auth"); return; }
+      userId = user.id;
       load();
       channel = supabase
         .channel("my-visits")
@@ -80,7 +60,7 @@ const LiveMyVisits = () => {
           <div className="flex items-center gap-2">
             <BookingNotifications role="patient" />
             <LanguageSwitcher />
-            <Button variant="ghost" size="sm" onClick={async () => { if (!MOCK_LOGIN_ENABLED) await supabase.auth.signOut(); navigate("/"); }}>
+            <Button variant="ghost" size="sm" onClick={async () => { await supabase.auth.signOut(); navigate("/"); }}>
               <LogOut className="h-4 w-4 me-2" />{t("header.logout")}
             </Button>
           </div>
@@ -91,6 +71,7 @@ const LiveMyVisits = () => {
           <h2 className="text-3xl font-bold mb-1">My visits</h2>
           <p className="text-muted-foreground">Summaries appear here once your doctor has reviewed and approved them.</p>
         </div>
+        <Button onClick={() => navigate("/registration")}>Book consultation</Button>
         {loading ? (
           <p className="text-muted-foreground">{t("dashboard.loading")}</p>
         ) : visits.length === 0 ? (
@@ -109,14 +90,8 @@ const LiveMyVisits = () => {
                   {v.created_at ? new Date(v.created_at).toLocaleDateString() : ""}
                 </span>
               </div>
-              {MOCK_LOGIN_ENABLED && (
-                <div className="flex items-center gap-3">
-                  <Button disabled={!doctorInCall} onClick={() => navigate(demoCallPath("patient"))}>
-                    <Video className="h-4 w-4 me-2" />Join call
-                  </Button>
-                  {!doctorInCall && <span className="text-sm text-muted-foreground">Waiting for the doctor to start…</span>}
-                </div>
-              )}
+              <p className="text-sm font-medium">{t(`status.${v.status}`)}</p>
+              {["pending", "claimed", "in_progress"].includes(v.status) && <Button onClick={() => navigate(`/waiting-room?id=${v.id}`)}><Video className="h-4 w-4 me-2" />Open waiting room</Button>}
               {v.visit_summary && v.visit_summary_approved_at ? (
                 <SummaryView s={v.visit_summary} />
               ) : (
@@ -130,4 +105,4 @@ const LiveMyVisits = () => {
   );
 };
 
-export default function MyVisits() { return MOCK_LOGIN_ENABLED ? <PatientWorkspace /> : <LiveMyVisits />; }
+export default function MyVisits() { return <LiveMyVisits />; }

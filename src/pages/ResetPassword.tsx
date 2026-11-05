@@ -23,7 +23,7 @@ const ResetPassword = () => {
     });
 
     const hash = window.location.hash;
-    if (hash.includes("type=recovery") || hash.includes("access_token")) {
+    if (hash.includes("type=recovery")) {
       setIsRecovery(true);
     }
 
