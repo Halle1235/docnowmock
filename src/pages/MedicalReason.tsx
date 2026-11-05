@@ -1,25 +1,28 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertTriangle } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useBookingDraft } from "@/components/BookingDraftProvider";
+import { reasonSchema } from "@/lib/booking-intake";
 
 const MedicalReason = () => {
   const navigate = useNavigate();
+  const { intake, reason, setReason } = useBookingDraft();
   const { t } = useTranslation();
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [description, setDescription] = useState("");
-  const [ackEmergency, setAckEmergency] = useState(false);
-  const [ackTelehealth, setAckTelehealth] = useState(false);
-  const [ackPrivacy, setAckPrivacy] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>(reason?.category ?? "");
+  const [description, setDescription] = useState(reason?.description ?? "");
+  const [ackEmergency, setAckEmergency] = useState(reason?.emergency ?? false);
+  const [ackTelehealth, setAckTelehealth] = useState(reason?.telehealth ?? false);
+  const [ackPrivacy, setAckPrivacy] = useState(reason?.privacy ?? false);
 
   const categories = [
+    { id: "urgent-gp", label: t("medicalReason.categories.urgentGp") },
     { id: "skin", label: t("medicalReason.categories.skin") },
     { id: "respiratory", label: t("medicalReason.categories.respiratory") },
     { id: "digestive", label: t("medicalReason.categories.digestive") },
@@ -48,20 +51,18 @@ const MedicalReason = () => {
       toast.error(t("medicalReason.consentRequired"));
       return;
     }
-    sessionStorage.setItem("consent", JSON.stringify({ version: "2026-09-v1", at: new Date().toISOString() }));
-
-    // Store the medical reason data in sessionStorage
-    sessionStorage.setItem("medicalReason", JSON.stringify({
-      category: selectedCategory,
-      description: description.trim()
-    }));
+    const result = reasonSchema.safeParse({ category: selectedCategory, description, emergency: ackEmergency, telehealth: ackTelehealth, privacy: ackPrivacy });
+    if (!result.success) { toast.error(t("medicalReason.invalidDescription")); return; }
+    setReason(result.data);
 
     navigate("/payment");
   };
 
+  if (!intake) return <Navigate to="/registration" replace />;
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+    <div className="min-h-screen bg-background">
+      <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-primary">{t("header.brand")}</h1>
           <LanguageSwitcher />
@@ -69,14 +70,13 @@ const MedicalReason = () => {
       </header>
 
       <main className="container mx-auto px-4 py-12">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold mb-2">{t("medicalReason.title")}</h2>
             <p className="text-muted-foreground">{t("medicalReason.subtitle")}</p>
           </div>
 
-          <Card>
-            <CardContent className="p-6 space-y-6">
+          <section className="space-y-6">
               <div role="alert" className="flex gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4">
                 <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
                 <div>
@@ -101,6 +101,7 @@ const MedicalReason = () => {
                 <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
                   <Label htmlFor="description">{t("medicalReason.descriptionLabel")}</Label>
                   <Textarea
+                    maxLength={2000}
                     id="description"
                     placeholder={t("medicalReason.descriptionPlaceholder")}
                     value={description}
@@ -123,6 +124,7 @@ const MedicalReason = () => {
                 ))}
               </div>
 
+              <Button variant="ghost" onClick={() => navigate("/registration")}>{t("registration.backToIntake")}</Button>
               <Button 
                 onClick={handleSubmit}
                 className="w-full"
@@ -130,8 +132,7 @@ const MedicalReason = () => {
               >
                 {t("medicalReason.continueButton")}
               </Button>
-            </CardContent>
-          </Card>
+          </section>
         </div>
       </main>
     </div>
