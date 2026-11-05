@@ -71,6 +71,13 @@
       "when": 1793839244892,
       "tag": "0009_real_account_signup_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793842224360,
+      "tag": "0010_fix_doctor_consultation_alias",
+      "breakpoints": true
     }
   ]
 }
