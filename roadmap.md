@@ -1,8 +1,8 @@
 # Tasks
 - [x] Handle duplicate doctor account emails safely; six handler tests and signed-in admin conflict feedback verified without changing existing accounts.
 - [x] Add admin logout and editing of user names and phone numbers; signed-in rename/save/readback/restoration and protected-route logout verified.
-- [ ] Remove Google and Lovable sign-in buttons for now.
-- [ ] Remove the homepage Dr. Erikson online/connecting notice.
+- [x] Remove Google and Lovable sign-in buttons for now; patient and doctor email/password forms verified.
+- [x] Remove the homepage Dr. Erikson online/connecting notice; photo remains visible and notice absent.
 - [x] Switch to real accounts, disable sample experiences and public test access, and require administrator doctor approval; signed-out guards, mobile signup, and security tests verified.
 - [ ] Verify signed-in account and doctor approval end-to-end — needs a confirmed real account and administrator (currently zero admins); placeholder-email signup correctly rejected.
 - [ ] Connect secure payment confirmation before accepting paid bookings — no payment provider configured; checkout safely disabled.
