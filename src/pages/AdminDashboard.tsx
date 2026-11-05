@@ -144,6 +144,11 @@ const AdminDashboard = () => {
 
   const rolesFor = (userId: string) => roles.filter((r) => r.user_id === userId).map((r) => r.role);
 
+  const removeFromCalls = async (doctorId: string) => {
+    const { error } = await supabase.functions.invoke("revoke-call-access", { body: { doctorId } });
+    if (error) toast({ title: "Could not end active calls", description: "Access was removed, but the doctor may still be in a call. Try again.", variant: "destructive" });
+  };
+
   const toggleRole = async (userId: string, role: AppRole, hasRole: boolean) => {
     const key = `${userId}-${role}`;
     setBusyKey(key);
@@ -159,6 +164,7 @@ const AdminDashboard = () => {
         title: hasRole ? "Role removed" : "Role granted",
         description: `${role} ${hasRole ? "revoked from" : "granted to"} the user.`,
       });
+      if (hasRole && role === "doctor") await removeFromCalls(userId);
       await loadData();
     }
     setBusyKey(null);
@@ -182,6 +188,7 @@ const AdminDashboard = () => {
           ? "The doctor no longer has dashboard access."
           : "The doctor role was granted automatically.",
       });
+      if (doctor.is_verified) await removeFromCalls(doctor.user_id);
       await loadData();
     }
     setBusyKey(null);
