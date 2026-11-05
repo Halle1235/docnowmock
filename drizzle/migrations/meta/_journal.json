@@ -92,6 +92,13 @@
       "when": 1793842573646,
       "tag": "0012_fix_unpaid_booking_phone_variable",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793847463304,
+      "tag": "0013_provision_legacy_patient_accounts",
+      "breakpoints": true
     }
   ]
 }

@@ -29,7 +29,10 @@ export default function Payment() {
    if (error) throw error;
    if (!data) throw new Error(t('payment.bookingFailed'));
    navigate(`/waiting-room?id=${encodeURIComponent(data)}`, { replace: true });
-  } catch (error) { toast.error(error instanceof Error ? error.message : t('payment.bookingFailed')); }
+  } catch (error) {
+   const message = error && typeof error === "object" && "message" in error && typeof (error as { message: unknown }).message === "string" ? (error as { message: string }).message : "";
+   toast.error(message || t('payment.bookingFailed'));
+  }
   finally { inFlight.current = false; setSubmitting(false); }
  };
  if (!intake || !reason) return <Navigate to="/registration" replace />;
