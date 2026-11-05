@@ -1,15 +1,17 @@
 # Tasks
-- [ ] Switch to real accounts, remove sample experiences, require doctor approval, and verify account access.
+- [x] Switch to real accounts, disable sample experiences and public test access, and require administrator doctor approval; signed-out guards, mobile signup, and security tests verified.
+- [ ] Verify signed-in account and doctor approval end-to-end — needs a confirmed real account and administrator (currently zero admins); placeholder-email signup correctly rejected.
+- [ ] Connect secure payment confirmation before accepting paid bookings — no payment provider configured; checkout safely disabled.
 - [x] Add shared doctor/patient booking alert sounds; browser confirms activated doctor arrival and patient acceptance tones through shared booking reads, mute controls, and deduplication tests.
 - [x] Open an editable patient journal after doctor-confirmed call completion; actual sample call, automatic journal opening, post-call save/readback, Completed history, and 360px layout verified. Deployed permission/audit checks pass; real verified-doctor end-to-end remains blocked below.
 - [x] Connect mock payment to the fixed fictional doctor queue and show a doctor name only after acceptance; 16 focused tests pass, same-browser two-tab payment/claim/name readback verified without auth or database requests. Actual patient identity and separate-device booking remain unavailable in mock mode.
 - [x] Expand Amina's fictional journal from September 4 to November 4 and add in-app doctor arrival / patient acceptance alerts; 26 focused tests pass in isolated runs, browser verifies cross-tab sample acceptance and 360px layout, latest build OK.
 - [x] Patient's own booking reaches doctors on other devices via the shared test queue (no logins).
-- [ ] Verify booking alerts with real doctor/patient accounts — blocked by mock-only login mode and no verified doctor account.
+- [ ] Verify booking alerts with real doctor/patient accounts — blocked by no approved doctor account and configured payment provider.
 - [x] Inspect deployed atomic claiming, improve competing-claim feedback, and verify three named sample patients with searchable journal history; 21 focused tests and browser checks pass.
-- [ ] Run real competing-doctor claim requests — blocked by zero verified doctor accounts and mock-only login mode; deployed atomic guard inspected, sample competing claims tested.
+- [ ] Run real competing-doctor claim requests — blocked by no two approved doctor accounts; deployed atomic guard inspected, sample competing claims tested.
 - [x] Add automatic completed history and patient journal timeline, persistent authorized clinical notes, security tests, and sample-flow checks.
-- [ ] Verify real doctor journal creation, future-visit timeline reads, and audit readback end-to-end — blocked by no verified doctor account and mock-only login mode. Authenticated patient/anonymous denied-write and denied-read probes pass.
+- [ ] Verify real doctor journal creation, future-visit timeline reads, and audit readback end-to-end — blocked by no approved doctor account. Authenticated patient/anonymous denied-write and denied-read probes pass.
 - [x] Expire/delete rooms through doctor-confirmed ending, reject ended/expired/deleted links, prevent reopening ended visits, and test shutdown/retry behavior.
 - [ ] Provider cleanup for status changes outside the call-ending action and unattended retry delivery — blocked by unavailable managed authenticated database-webhook setup; those statuses deny new app credentials immediately, but provider cleanup is not guaranteed until room lifetime expiry.
 - [x] Add and run actual room-handler tests with synthetic service boundaries for assigned participants, outsiders, anonymous access, and room-scoped credentials; rerun deployed permission checks. Signed-in end-to-end testing remains blocked below.
@@ -18,14 +20,14 @@
 - [x] Add sample queue status, health profile, prescription/receipt downloads, ratings, and follow-up rebooking to original My visits.
 - [x] Add camera/microphone checks and bounded in-call chat/photo/document sharing to original call screen.
 - [x] Verify patient flows, PDF downloads, two-person sharing, mobile layout, and sample-only data boundaries.
-- [ ] Activate real queue estimates, pharmacy verification, insurance receipts, persistent health profiles, and scheduled reminders — blocked by mock-only accounts/payment mode and required real-care verification.
+- [ ] Activate real queue estimates, pharmacy verification, insurance receipts, persistent health profiles, and scheduled reminders — blocked by payment provider and required real-care verification.
 - [x] Restrict live patient-record access by verified doctor assignment or administrator role while preserving patient self-access.
 - [x] Add protected access/change auditing and verify deployed database permission rules.
-- [ ] Verify authenticated doctor/admin record reads, edits, and audit readback end-to-end — blocked by mock-only login mode and no requesting-user auth account.
+- [ ] Verify authenticated doctor/admin record reads, edits, and audit readback end-to-end — blocked by no confirmed requesting-user account and administrator.
 - [x] Resolve the reported React hook error.
 - [x] Provide temporary mock login flows isolated from live account access.
 - [x] Verify mock logins in the browser.
 - [x] Add availability, patient details, in-call notes and prescription drafts on original doctor screens in sample mode.
 - [x] Add daily statistics, searchable history and waiting-time / new-patient alerts.
 - [x] Test the six additions and review their isolation from live patient data.
-- [ ] Enable these features for real patient care — blocked by requested mock-only login mode; live permissions and clinical workflows require separate hardening before activation.
+- [ ] Enable these features for real patient care — blocked by payment provider, approved accounts, and live clinical workflow verification.
