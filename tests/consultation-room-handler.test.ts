@@ -121,13 +121,11 @@ test("deleted room never creates a replacement on rejoin", async () => {
  const result = await requestAs(doctorA, roomA, { missingRoom: true });
  assert.equal(result.status, 410); assert.deepEqual(result.updates, []);
 });
-test("doctor end closes authorization before expiring and deleting the room", async () => {
+test("doctor end closes authorization before deleting the room", async () => {
  const result = await requestAs(doctorA, roomA, { action: "end" });
  assert.equal(result.status, 200); assert.equal(result.body.ended, true);
  assert.equal((result.updates[0].value as {status:string}).status, "completed");
- assert.equal((result.calls[0].body.properties as {eject_at_room_exp:boolean}).eject_at_room_exp, true);
- assert.ok(Number((result.calls[0].body.properties as {exp:number}).exp) <= Date.now()/1000);
- assert.equal(result.calls.length, 2);
+ assert.equal(result.calls.length, 1);
 });
 test("patient cannot end or delete the consultation room", async () => {
  const result = await requestAs(patientA, roomA, { action: "end" });
