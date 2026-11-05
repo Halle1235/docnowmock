@@ -3,9 +3,16 @@ import assert from "node:assert/strict";
 import { bookingReturnPath, CONSULTATION_PRICE_AED, identitySchema, intakeSchema, reasonSchema } from "./booking-intake";
 const intake = { fullName: "Test Patient", email: "test@example.com", phone: "0501234567", country: "AE", dateOfBirth: "1990-01-01", identity: { type: "resident", number: "784-1990-1234567-1" } };
 test("consultation costs AED 249", () => assert.equal(CONSULTATION_PRICE_AED, 249));
-test("resident ID uses required Emirates ID format", () => {
+test("provided resident ID uses Emirates ID format", () => {
   assert.ok(identitySchema.safeParse(intake.identity).success);
   assert.equal(identitySchema.safeParse({ type: "resident", number: "785-1990-1234567-1" }).success, false);
+});
+test("Emirates ID can be left blank for now", () => {
+  assert.ok(intakeSchema.safeParse({ ...intake, identity: { type: "resident", number: "" } }).success);
+});
+test("mobile number can be left blank for now", () => {
+  assert.ok(intakeSchema.safeParse({ ...intake, phone: "" }).success);
+  assert.equal(intakeSchema.safeParse({ ...intake, phone: "12" }).success, false);
 });
 test("tourists use a passport instead of an Emirates ID", () => assert.ok(identitySchema.safeParse({ type: "visitor", number: "AB123456" }).success));
 test("intake requires a real date and valid contact details", () => {

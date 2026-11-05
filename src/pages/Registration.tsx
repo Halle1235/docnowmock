@@ -139,12 +139,12 @@ const Registration = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>{t('registration.identification')} *</Label>
+                <Label>{t('registration.identification')}</Label>
                 <ToggleGroup type="single" value={identityType} onValueChange={value => { if (value === "resident" || value === "visitor") { setIdentityType(value); setPassportNumber(""); } }} variant="outline" className="grid grid-cols-2 gap-2">
                   <ToggleGroupItem value="resident" className="h-auto min-h-12 whitespace-normal py-2">{t('registration.resident')}</ToggleGroupItem>
                   <ToggleGroupItem value="visitor" className="h-auto min-h-12 whitespace-normal py-2">{t('registration.visitor')}</ToggleGroupItem>
                 </ToggleGroup>
-                <Label htmlFor="passport">{t(identityType === "resident" ? 'registration.emiratesId' : 'registration.passportNumber')} *</Label>
+                <Label htmlFor="passport">{t(identityType === "resident" ? 'registration.emiratesId' : 'registration.passportNumber')} {identityType === "resident" ? `(${t('registration.optional')})` : "*"}</Label>
                 <Input
                   id="passport"
                   type="text"
@@ -153,7 +153,7 @@ const Registration = () => {
                   placeholder={identityType === "resident" ? "784-XXXX-XXXXXXX-X" : t('registration.passportPlaceholder')}
                   value={passportNumber}
                   onChange={(e) => setPassportNumber(e.target.value)}
-                  required
+                  required={identityType === "visitor"}
                   className="h-12"
                 />
                 <p className="text-sm text-muted-foreground">
@@ -177,7 +177,7 @@ const Registration = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">{t('registration.phone')} *</Label>
+                <Label htmlFor="phone">{t('registration.phone')} ({t('registration.optional')})</Label>
                 <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-2" dir="ltr">
                 <Select value={phoneCountry} onValueChange={(value) => { if (bookingCountries.includes(value as CountryCode)) setPhoneCountry(value as CountryCode); }}>
                   <SelectTrigger aria-label={t('registration.countryCode')} className="h-12">
@@ -197,7 +197,6 @@ const Registration = () => {
                   placeholder={t('registration.phonePlaceholder')}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  required
                   className="h-12 min-w-0"
                 />
                 </div>
