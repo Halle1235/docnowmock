@@ -12,8 +12,6 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import VisitSummaryDialog from "@/components/VisitSummaryDialog";
 import PatientJournal from "@/components/PatientJournal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import DoctorWorkspace from "@/components/DoctorWorkspace";
-import { MOCK_LOGIN_ENABLED, SAMPLE_CONSULTATION, demoCallPath } from "@/lib/mock-login";
 import BookingNotifications from "@/components/BookingNotifications";
 import { useBookingNotifications } from "@/hooks/use-booking-notifications";
 
@@ -47,13 +45,6 @@ const LiveDoctorDashboard = () => {
   useBookingNotifications("doctor", consultations, !loading);
 
   useEffect(() => {
-    if (MOCK_LOGIN_ENABLED) {
-      // Demo: sample patients only, no real records.
-      setUserEmail("Demo doctor");
-      setConsultations([SAMPLE_CONSULTATION as Consultation]);
-      setLoading(false);
-      return;
-    }
     checkAuth().then((allowed) => { if (allowed) loadConsultations(); });
 
     const channel = supabase
@@ -73,16 +64,16 @@ const LiveDoctorDashboard = () => {
   }, []);
 
   const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (!session) {
+    if (!user) {
       navigate("/auth");
       return false;
     }
 
-    setUserEmail(session.user.email || "");
+    setUserEmail(user.email || "");
 
-    const { data: verified, error } = await supabase.rpc('is_authorized_doctor', { _user_id: session.user.id });
+    const { data: verified, error } = await supabase.rpc('is_authorized_doctor', { _user_id: user.id });
 
     if (error || !verified) {
       toast({
@@ -98,8 +89,8 @@ const LiveDoctorDashboard = () => {
 
   const loadConsultations = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
       const { data, error } = await supabase.rpc('list_doctor_consultations');
 
@@ -119,16 +110,12 @@ const LiveDoctorDashboard = () => {
 
   const claimConsultation = async (consultationId: string) => {
     if (claimInFlight.current) return;
-    if (MOCK_LOGIN_ENABLED) {
-      setConsultations((cs) => cs.map((c) => c.id === consultationId ? { ...c, status: "claimed" } : c));
-      return;
-    }
     claimInFlight.current = true;
     setClaimingId(consultationId);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
       const { error } = await supabase.rpc('claim_patient_consultation', { _consultation_id: consultationId });
 
@@ -161,11 +148,11 @@ const LiveDoctorDashboard = () => {
   }, []);
 
   const startVideo = (consultationId: string) => {
-    navigate(MOCK_LOGIN_ENABLED ? demoCallPath("doctor") : `/call/${consultationId}`);
+    navigate(`/call/${consultationId}`);
   };
 
   const handleLogout = async () => {
-    if (!MOCK_LOGIN_ENABLED) await supabase.auth.signOut();
+    await supabase.auth.signOut();
     navigate("/auth");
   };
 
@@ -339,7 +326,7 @@ const LiveDoctorDashboard = () => {
                               {t('dashboard.startVideo')}
                             </Button>
                           )}
-                          {!MOCK_LOGIN_ENABLED && <VisitSummaryDialog
+                          {<VisitSummaryDialog
                             consultationId={consultation.id}
                             initialNotes={(consultation as any).notes}
                             initialSummary={(consultation as any).visit_summary}
@@ -359,5 +346,5 @@ const LiveDoctorDashboard = () => {
   );
 };
 
-const DoctorDashboard = () => MOCK_LOGIN_ENABLED ? <DoctorWorkspace /> : <LiveDoctorDashboard />;
+const DoctorDashboard = () => <LiveDoctorDashboard />;
 export default DoctorDashboard;
