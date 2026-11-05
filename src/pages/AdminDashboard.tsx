@@ -149,21 +149,49 @@ const AdminDashboard = () => {
 
   const createDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
-    setCreating(true);
-    const { data, error } = await supabase.functions.invoke("admin-create-doctor", { body: newDoctor });
-    setCreating(false);
-    const msg = error ? (await (error as any).context?.json?.().catch(() => null))?.error ?? error.message : data?.error;
-    if (error || data?.error) {
+    const email = newDoctor.email.trim().toLowerCase();
+    const existing = profiles.find((profile) => profile.email.toLowerCase() === email);
+    if (existing) {
+      const doctor = doctorProfiles.find((profile) => profile.user_id === existing.id);
       toast({
-        title: "Could not create doctor",
-        description: typeof msg === "string" ? msg : "Please check the details and try again.",
-        variant: "destructive",
+        title: "Account already exists",
+        description: doctor
+          ? doctor.is_verified
+            ? "This doctor is already verified. Use their existing sign-in details."
+            : "Review this account under Doctor verification below to approve the application."
+          : "The account holder must sign in and submit a doctor application before you can approve it.",
       });
       return;
     }
-    toast({ title: "Doctor account created", description: `${newDoctor.email} can now log in.` });
-    setNewDoctor(emptyDoctor);
-    await loadData();
+    setCreating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-create-doctor", {
+        body: { ...newDoctor, email },
+      });
+      let payload = data;
+      if (error && "context" in error && error.context instanceof Response) {
+        payload = await error.context.json().catch(() => null);
+      }
+      if (error || payload?.error) {
+        toast({
+          title: payload?.code === "EMAIL_ALREADY_REGISTERED" ? "Account already exists" : "Could not create doctor",
+          description: typeof payload?.error === "string" ? payload.error : error?.message ?? "Please check the details and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: "Doctor account created", description: `${email} can now log in.` });
+      setNewDoctor(emptyDoctor);
+      await loadData();
+    } catch {
+      toast({
+        title: "Could not create doctor",
+        description: "The account service could not be reached. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setCreating(false);
+    }
   };
 
   const filtered = profiles.filter((p) => {

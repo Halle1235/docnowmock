@@ -1,4 +1,5 @@
 # Tasks
+- [ ] Handle duplicate doctor account emails safely and verify conflict feedback without changing existing accounts.
 - [x] Switch to real accounts, disable sample experiences and public test access, and require administrator doctor approval; signed-out guards, mobile signup, and security tests verified.
 - [ ] Verify signed-in account and doctor approval end-to-end — needs a confirmed real account and administrator (currently zero admins); placeholder-email signup correctly rejected.
 - [ ] Connect secure payment confirmation before accepting paid bookings — no payment provider configured; checkout safely disabled.
