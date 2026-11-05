@@ -9,8 +9,14 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccount } from "@/components/AccountProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import * as CountryFlags from "country-flag-icons/react/3x2";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { bookingCountries, defaultBookingCountry, formatBookingPhone, getCountryCallingCode, splitBookingPhone, type CountryCode } from "@/lib/booking-phone";
+
+const CountryFlag = ({ country }: { country: CountryCode }) => {
+  const Flag = CountryFlags[country as keyof typeof CountryFlags];
+  return Flag ? <Flag aria-hidden="true" className="h-4 w-6 shrink-0" /> : null;
+};
 
 const Registration = () => {
   const navigate = useNavigate();
@@ -168,10 +174,10 @@ const Registration = () => {
                 <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-2" dir="ltr">
                 <Select value={phoneCountry} onValueChange={(value) => { if (bookingCountries.includes(value as CountryCode)) setPhoneCountry(value as CountryCode); }}>
                   <SelectTrigger aria-label={t('registration.countryCode')} className="h-12">
-                    <SelectValue>{phoneCountry} +{getCountryCallingCode(phoneCountry)}</SelectValue>
+                    <SelectValue><span className="flex items-center gap-2"><CountryFlag country={phoneCountry} /><span>+{getCountryCallingCode(phoneCountry)}</span></span></SelectValue>
                   </SelectTrigger>
                   <SelectContent className="max-w-[calc(100vw-2rem)]">
-                    {countries.map((country) => <SelectItem key={country} value={country}>{countryNames.of(country) ?? country} (+{getCountryCallingCode(country)})</SelectItem>)}
+                    {countries.map((country) => <SelectItem key={country} value={country}><span className="flex items-center gap-2"><CountryFlag country={country} /><span>{countryNames.of(country) ?? country} (+{getCountryCallingCode(country)})</span></span></SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Input
