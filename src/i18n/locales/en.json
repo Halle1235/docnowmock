@@ -92,6 +92,8 @@
     "payment": "Payment",
     "status": "Status",
     "created": "Created",
+    "reason": "Reason for visit",
+    "symptoms": "Symptoms",
     "takeConsultation": "Take consultation",
     "assigning": "Assigning...",
     "startVideo": "Start video",
@@ -154,7 +156,8 @@
       "womens": "Women's health",
       "children": "Children's health",
       "general": "General consultation",
-      "urgentGp": "Urgent GP · non-emergency"
+      "urgentGp": "Urgent GP · non-emergency",
+      "urgent-gp": "Urgent GP · non-emergency"
     },
     "descriptionLabel": "Describe your symptoms",
     "descriptionPlaceholder": "Please describe your symptoms, when they started, and any relevant details...",
