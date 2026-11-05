@@ -57,6 +57,13 @@
       "when": 1793765915285,
       "tag": "0007_journal_post_call_documentation",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793839124361,
+      "tag": "0008_real_accounts_doctor_approval",
+      "breakpoints": true
     }
   ]
 }

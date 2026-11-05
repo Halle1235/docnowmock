@@ -354,6 +354,10 @@ export type Database = {
         }
         Returns: string
       }
+      apply_for_doctor: {
+        Args: { _license_number: string; _specialization: string }
+        Returns: string
+      }
       audit_patient_record_read: {
         Args: { _id: string; _table: string }
         Returns: boolean
