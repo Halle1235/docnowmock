@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Search, ShieldCheck, UserCog, BadgeCheck, UserPlus } from "lucide-react";
+import { Loader2, Search, ShieldCheck, UserCog, BadgeCheck, UserPlus, LogOut, Pencil, Save } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type AppRole = "patient" | "doctor" | "admin";
 const ALL_ROLES: AppRole[] = ["patient", "doctor", "admin"];
@@ -42,6 +43,45 @@ const AdminDashboard = () => {
   const [doctorProfiles, setDoctorProfiles] = useState<DoctorProfile[]>([]);
   const [newDoctor, setNewDoctor] = useState(emptyDoctor);
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Profile | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  const signOut = async () => {
+    setSigningOut(true);
+    try {
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      if (error) throw error;
+      navigate("/auth", { replace: true });
+    } catch {
+      toast({ title: "Could not log out", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
+  const saveProfile = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!editing || !editing.full_name.trim()) return;
+    setSaving(true);
+    try {
+      const updated = { full_name: editing.full_name.trim(), phone: editing.phone?.trim() || null };
+      const { error } = await supabase.from("profiles").update(updated).eq("id", editing.id);
+      if (error) throw error;
+      // Read back through the audited admin path before reporting success.
+      const { data, error: readError } = await supabase.rpc("list_admin_profiles").select("id, full_name, email, phone");
+      if (readError) throw readError;
+      const saved = data?.find((profile) => profile.id === editing.id);
+      if (!saved || saved.full_name !== updated.full_name || saved.phone !== updated.phone) throw new Error("Profile update was not confirmed.");
+      setProfiles(data ?? []);
+      setEditing(null);
+      toast({ title: "Profile updated" });
+    } catch (error) {
+      toast({ title: "Could not save profile", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   useEffect(() => {
     const verifyAdmin = async () => {
@@ -211,14 +251,18 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/80 backdrop-blur">
-        <div className="container mx-auto flex items-center justify-between px-4 py-4">
+        <div className="container mx-auto flex flex-wrap items-center justify-between gap-3 px-4 py-4">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-primary" />
             <h1 className="text-lg font-semibold">DocNow Admin</h1>
           </div>
-          <Button variant="outline" size="sm" onClick={() => navigate("/")}>
-            Back to site
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate("/")}>Back to site</Button>
+            <Button variant="outline" size="sm" disabled={signingOut} onClick={() => void signOut()}>
+              {signingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+              Log out
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -258,6 +302,7 @@ const AdminDashboard = () => {
                     <div className="min-w-0">
                       <p className="truncate font-medium">{profile.full_name || "Unnamed user"}</p>
                       <p className="truncate text-sm text-muted-foreground">{profile.email}</p>
+                      {profile.phone && <p className="text-sm text-muted-foreground">{profile.phone}</p>}
                       <div className="mt-2 flex flex-wrap gap-1">
                         {userRoles.length === 0 ? (
                           <Badge variant="outline">no roles</Badge>
@@ -273,6 +318,9 @@ const AdminDashboard = () => {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setEditing({ ...profile })}>
+                        <Pencil className="mr-2 h-3 w-3" />Edit profile
+                      </Button>
                       {ALL_ROLES.map((role) => {
                         const hasRole = userRoles.includes(role);
                         const key = `${profile.id}-${role}`;
@@ -402,6 +450,31 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
       </main>
+      <Dialog open={editing !== null} onOpenChange={(open) => { if (!open && !saving) setEditing(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Edit profile</DialogTitle></DialogHeader>
+          {editing && <form onSubmit={saveProfile} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Full name</Label>
+              <Input id="edit-name" required maxLength={120} disabled={saving} value={editing.full_name} onChange={(event) => setEditing({ ...editing, full_name: event.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-phone">Phone</Label>
+              <Input id="edit-phone" type="tel" maxLength={32} disabled={saving} value={editing.phone ?? ""} onChange={(event) => setEditing({ ...editing, phone: event.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Account email</Label>
+              <Input id="edit-email" type="email" value={editing.email} disabled />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" disabled={saving} onClick={() => setEditing(null)}>Cancel</Button>
+              <Button type="submit" disabled={saving || !editing.full_name.trim()}>
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save changes
+              </Button>
+            </div>
+          </form>}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
