@@ -389,6 +389,7 @@ export type Database = {
         Args: { _name: string; _reason: string }
         Returns: string
       }
+      ensure_default_patient_account: { Args: never; Returns: undefined }
       get_authorized_call_record: {
         Args: { _consultation_id: string }
         Returns: Json
