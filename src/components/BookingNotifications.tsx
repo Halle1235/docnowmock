@@ -9,7 +9,7 @@ export default function BookingNotifications({ role }: { role: NotificationRole 
   const items = useBookingNotificationList(role);
   const unread = items.filter(n => !n.read).length;
   const sound = useBookingSound(role);
-  const enabled = sound[role] && sound.ready;
+  const enabled = sound[role];
   const toggle = async () => {
     if (enabled) { bookingSound.setEnabled(role, false); return; }
     if (!await bookingSound.activate()) { toast.error("Sound is unavailable. Booking alerts will still appear."); return; }

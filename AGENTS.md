@@ -1,4 +1,5 @@
 # Architecture rules
+- Booking phones use maintained international numbering metadata and save in E.164 format; emergency guidance uses explicit location, never a phone prefix as evidence of location.
 - Mock payment short-circuits before authentication and live consultation writes; in mock-login mode, bookings go to a separate auto-expiring shared test queue (display name + visit reason only, reached solely through bounded functions with an active-row cap) so they reach doctors on other devices, and it never touches consultations, clinical records, permissions, or room authorization.
 - In-app booking alerts derive from authorized reads; shared role-scoped audio activates through browser gestures and deduplicated notifications, so polling never repeats sounds. Sample cross-tab acceptance signals contain only a fixed fictional visit ID and never update permissions, assignment, or clinical records.
 - Share fictional patient identities across sample queue, completed history, and journal to preserve ID-based continuity without seeding live records.
