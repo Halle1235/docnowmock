@@ -104,15 +104,15 @@
     "loading": "Loading..."
   },
   "registration": {
-    "title": "Identity Verification",
-    "subtitle": "To ensure your safety, we need to verify your identity",
+    "title": "Patient details",
+    "subtitle": "Book your video consultation",
     "fullName": "Full name",
     "fullNamePlaceholder": "First and last name",
     "personalNumber": "Personal number",
     "personalNumberPlaceholder": "YYYYMMDD-XXXX",
     "passportNumber": "Passport number",
     "passportPlaceholder": "Enter your passport number",
-    "passportHelper": "We use this for secure identity verification",
+    "passportHelper": "Enter your identification details. This does not verify your identity.",
     "email": "Email address",
     "emailPlaceholder": "your@email.com",
     "phone": "Mobile number",
@@ -124,13 +124,19 @@
     "emergencyText": "For a medical emergency in the UAE, call 998 for an ambulance now, or go to the nearest emergency department. Police emergencies: 999.",
     "callAmbulance": "Call 998 · UAE ambulance",
     "outsideUae": "Outside the UAE, call the emergency number where you are. Your phone country code does not indicate your current location.",
-    "securityNote": "Your information is processed securely according to GDPR and stored encrypted",
-    "continueButton": "Continue to payment",
+    "securityNote": "Your details will be submitted only when secure booking is available.",
+    "continueButton": "Next: medical reason & consent",
     "termsNote": "By continuing you agree to our terms of service",
     "fillAllFields": "Please fill in all fields",
     "allInfoRequired": "All information is required to verify your identity",
     "verificationComplete": "Verification complete",
-    "proceedingToPayment": "Proceeding to payment"
+    "proceedingToPayment": "Proceeding to payment",
+    "dateOfBirth": "Date of birth",
+    "identification": "Identification",
+    "resident": "UAE Resident",
+    "visitor": "Tourist / Visitor",
+    "emiratesId": "Emirates ID",
+    "backToIntake": "Back to patient details"
   },
   "medicalReason": {
     "title": "What do you need help with?",
@@ -146,7 +152,8 @@
       "sexual": "Sexual health",
       "womens": "Women's health",
       "children": "Children's health",
-      "general": "General consultation"
+      "general": "General consultation",
+      "urgentGp": "Urgent GP · non-emergency"
     },
     "descriptionLabel": "Describe your symptoms",
     "descriptionPlaceholder": "Please describe your symptoms, when they started, and any relevant details...",
@@ -154,11 +161,12 @@
     "selectCategory": "Please select a category",
     "provideDescription": "Please describe your symptoms",
     "emergencyTitle": "Is this an emergency?",
-    "emergencyText": "Online consultations are not for emergencies. If you have chest pain, difficulty breathing, severe bleeding, signs of stroke, thoughts of self-harm or another urgent problem, call 998 (Ambulance) or 999 now, or go to the nearest emergency department.",
+    "emergencyText": "Online consultations are not for emergencies. For chest pain, difficulty breathing, severe bleeding, signs of stroke, thoughts of self-harm or another emergency, seek emergency care now. In the UAE call 998 for an ambulance; outside the UAE call your local emergency number.",
     "ackEmergency": "I confirm this is not an emergency and I understand the doctor may refer me to in-person or emergency care.",
-    "ackTelehealth": "I consent to a remote video consultation with a DHA-licensed doctor and understand its limitations (no physical examination; narcotic and controlled medicines cannot be prescribed online).",
+    "ackTelehealth": "I consent to a remote video consultation and understand its limitations (no physical examination; narcotic and controlled medicines cannot be prescribed online).",
     "ackPrivacy": "I consent to DocNow processing and storing my personal and health information to provide this consultation, and to it being recorded in my medical record.",
-    "consentRequired": "Please confirm all three statements to continue."
+    "consentRequired": "Please confirm all three statements to continue.",
+    "invalidDescription": "Enter a description of up to 2,000 characters."
   },
   "payment": {
     "title": "Pay for your appointment",
@@ -181,7 +189,11 @@
     "fillAllFields": "Please fill in all card details",
     "allInfoRequired": "All information is required to complete the payment",
     "paymentComplete": "Payment completed",
-    "appointmentBooked": "Your video appointment is now booked"
+    "appointmentBooked": "Your video appointment is now booked",
+    "unavailable": "Checkout is not available yet. No payment has been taken and no appointment has been booked.",
+    "insuranceUnavailable": "Insurance co-pay is not available.",
+    "checkoutUnavailable": "Checkout unavailable",
+    "backToReason": "Back to medical reason"
   },
   "waitingRoom": {
     "title": "Waiting for doctor",
