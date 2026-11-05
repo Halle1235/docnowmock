@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
             room_name: roomName,
             user_id: userData.user.id,
             is_owner: isDoctor,
-            exp: Math.floor(Date.now() / 1000) + 60 * 60 * 2,
+            exp: Math.floor(Date.now() / 1000) + 60 * 60,
             eject_at_token_exp: true,
           },
         }),
