@@ -230,33 +230,42 @@ export type Database = {
       profiles: {
         Row: {
           allergies: string | null
+          contact_email: string | null
           created_at: string | null
           date_of_birth: string | null
           email: string
+          emirates_id: string | null
           full_name: string
           id: string
+          identification_type: string | null
           passport_number: string | null
           phone: string | null
           updated_at: string | null
         }
         Insert: {
           allergies?: string | null
+          contact_email?: string | null
           created_at?: string | null
           date_of_birth?: string | null
           email: string
+          emirates_id?: string | null
           full_name: string
           id: string
+          identification_type?: string | null
           passport_number?: string | null
           phone?: string | null
           updated_at?: string | null
         }
         Update: {
           allergies?: string | null
+          contact_email?: string | null
           created_at?: string | null
           date_of_birth?: string | null
           email?: string
+          emirates_id?: string | null
           full_name?: string
           id?: string
+          identification_type?: string | null
           passport_number?: string | null
           phone?: string | null
           updated_at?: string | null
@@ -366,6 +375,10 @@ export type Database = {
         Args: { _consultation_id: string }
         Returns: boolean
       }
+      book_unpaid_consultation: {
+        Args: { _intake: Json; _reason: Json }
+        Returns: string
+      }
       claim_patient_consultation: {
         Args: { _consultation_id: string }
         Returns: undefined
@@ -402,11 +415,14 @@ export type Database = {
         Args: never
         Returns: {
           allergies: string | null
+          contact_email: string | null
           created_at: string | null
           date_of_birth: string | null
           email: string
+          emirates_id: string | null
           full_name: string
           id: string
+          identification_type: string | null
           passport_number: string | null
           phone: string | null
           updated_at: string | null
