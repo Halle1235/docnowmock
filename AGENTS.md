@@ -6,9 +6,10 @@
 - Patient sample profile, ratings, follow-ups, and visit documents stay in memory; PDF/QR output is explicitly non-clinical and never a real pharmacy verification or insurance claim.
 - Call text uses bounded Daily app messages; file bytes use a size/type-validated direct WebRTC data channel, never public storage, with no persistence and explicit network-failure feedback.
 - Live staff record reads use POST RPCs with transactional auditing; database permissions enforce verified-doctor assignment or admin access, and clinical writes retain caller identity for audit triggers.
-- Original dashboard routes select sample or authenticated content; sample content must never grant privileges, create sessions, persist passwords, or access live patient data.
-- Control temporary mock login behavior through one shared module so real authentication can be restored consistently.
-- Demo video calls (original call screen at the demo id) use a separate no-account function with one shared short-lived room and no database access, so demos never touch patient records.
+- Original routes require validated real account access through the shared account provider; server-side roles and doctor verification remain the authorization boundary.
+- Mock mode stays disabled, and retired test-queue RPCs and demo-call credentials remain inaccessible to app visitors.
+- Doctor applications use an authenticated bounded RPC, remain unverified with no doctor privileges until admin approval, and protect identity and licence details from self-editing.
+- Paid booking stays disabled until a trusted payment confirmation flow exists; clients cannot insert falsely paid consultations.
 - Doctor sample workspace state lives only in memory and is shared across original dashboard/call navigation; never persist clinical drafts in browser storage or use sample state for real permissions.
 - Sample call statistics start on the meeting-joined event and finish on leaving, not on claiming a visit, to avoid reporting queue time as call duration.
 - Medicine choices do not prefill doses or issue prescriptions; clinical fields are bounded, explicit draft inputs to avoid unchecked treatment recommendations.
