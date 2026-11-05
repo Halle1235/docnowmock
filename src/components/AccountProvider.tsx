@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
+import { bookingReturnPath } from "@/lib/booking-intake";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { accountAccess, accountDestination, type AccountAccess } from "@/lib/account-access";
@@ -36,10 +37,14 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   return <AccountContext.Provider value={{ ...state, refresh }}>{children}</AccountContext.Provider>;
 }
 export function RequireAccount({ children, role }: { children: ReactNode; role?: AccountAccess }) {
+  const location = useLocation();
   const { user, access, loading, error, refresh } = useAccount();
   if (loading) return <div className="min-h-screen grid place-items-center bg-background text-muted-foreground">Checking account…</div>;
   if (error) return <div className="min-h-screen grid place-items-center bg-background"><div className="text-center space-y-4"><p role="alert">{error}</p><Button onClick={() => void refresh()}>Retry</Button></div></div>;
-  if (!user || !access) return <Navigate to="/auth?as=patient" replace />;
+  if (!user || !access) {
+    const returnTo = bookingReturnPath(location.pathname + location.search);
+    return <Navigate to={`/auth?as=patient${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`} replace />;
+  }
   if (role && access !== role) return <Navigate to={accountDestination(access)} replace />;
   return <>{children}</>;
 }

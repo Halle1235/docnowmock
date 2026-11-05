@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound";
 import MyVisits from "./pages/MyVisits";
 import { AccountProvider, RequireAccount } from "./components/AccountProvider";
 import DoctorRegistration from "./pages/DoctorRegistration";
+import { BookingDraftProvider } from "./components/BookingDraftProvider";
 
 const queryClient = new QueryClient();
 
@@ -27,9 +28,10 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AccountProvider>
+        <BookingDraftProvider>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/registration" element={<RequireAccount role="patient"><Registration /></RequireAccount>} />
+          <Route path="/registration" element={<Registration />} />
           <Route path="/medical-reason" element={<RequireAccount role="patient"><MedicalReason /></RequireAccount>} />
           <Route path="/payment" element={<RequireAccount role="patient"><Payment /></RequireAccount>} />
           <Route path="/waiting-room" element={<RequireAccount role="patient"><WaitingRoom /></RequireAccount>} />
@@ -45,6 +47,7 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </BookingDraftProvider>
       </AccountProvider>
       </BrowserRouter>
     </TooltipProvider>
