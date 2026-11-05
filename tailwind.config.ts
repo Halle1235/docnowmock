@@ -18,6 +18,7 @@ export default {
         preview: "hsl(var(--preview-background))",
         success: "hsl(var(--success))",
         call: { DEFAULT: "hsl(var(--call-background))", foreground: "hsl(var(--call-foreground))", border: "hsl(var(--call-border))" },
+        room: { DEFAULT: "hsl(var(--room))", card: "hsl(var(--room-card))", button: "hsl(var(--room-button))", "button-hover": "hsl(var(--room-button-hover))", drawer: "hsl(var(--room-drawer))", leave: "hsl(var(--room-leave))", "leave-hover": "hsl(var(--room-leave-hover))", bubble: "hsl(var(--room-bubble))", ink: "hsl(var(--room-ink))" },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

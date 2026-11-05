@@ -67,6 +67,15 @@ All colors MUST be HSL.
     --daily-background: #0F172A;
     --daily-border: #1E293B;
     --preview-background: 210 18% 93%;
+    --room: 168 78% 15%;
+    --room-card: 165 65% 11%;
+    --room-button: 168 76% 20%;
+    --room-button-hover: 167 77% 24%;
+    --room-drawer: 167 75% 11%;
+    --room-leave: 8 55% 53%;
+    --room-leave-hover: 8 53% 47%;
+    --room-bubble: 160 84% 39%;
+    --room-ink: 166 91% 9%;
   }
 
   .dark {
