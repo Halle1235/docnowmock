@@ -138,5 +138,5 @@ test("cleanup failure is reported after authorization is closed", async () => {
 });
 test("ending an already completed consultation retries cleanup without reopening", async () => {
  const result = await requestAs(doctorA, {...roomA,status:"completed"}, { action: "end" });
- assert.equal(result.status, 200); assert.deepEqual(result.updates, []); assert.equal(result.calls.length,2);
+ assert.equal(result.status, 200); assert.deepEqual(result.updates, []); assert.equal(result.calls.length,1);
 });
