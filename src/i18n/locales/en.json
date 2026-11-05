@@ -127,7 +127,7 @@
     "securityNote": "Your details will be submitted only when secure booking is available.",
     "continueButton": "Next: medical reason & consent",
     "termsNote": "By continuing you agree to our terms of service",
-    "fillAllFields": "Please fill in all fields",
+    "fillAllFields": "Please check the required details",
     "allInfoRequired": "All information is required to verify your identity",
     "verificationComplete": "Verification complete",
     "proceedingToPayment": "Proceeding to payment",
@@ -136,7 +136,8 @@
     "resident": "UAE Resident",
     "visitor": "Tourist / Visitor",
     "emiratesId": "Emirates ID",
-    "backToIntake": "Back to patient details"
+    "backToIntake": "Back to patient details",
+    "optional": "optional"
   },
   "medicalReason": {
     "title": "What do you need help with?",
