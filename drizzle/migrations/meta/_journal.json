@@ -64,6 +64,13 @@
       "when": 1793839124361,
       "tag": "0008_real_accounts_doctor_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793839244892,
+      "tag": "0009_real_account_signup_profiles",
+      "breakpoints": true
     }
   ]
 }
