@@ -22,6 +22,12 @@ test("doctor arrival sound requires activation and an open doctor screen", async
   assert.equal(tones(), 1);
   unmount(); assert.equal(sound.play("doctor"), false);
 });
+test("doctor and patient notification sounds are on by default before browser activation", () => {
+  const { sound } = fixture();
+  assert.equal(sound.getSnapshot().doctor, true);
+  assert.equal(sound.getSnapshot().patient, true);
+  assert.equal(sound.getSnapshot().ready, false);
+});
 test("patient acceptance sound is independent from doctor mute", async () => {
   const { sound, tones } = fixture();
   sound.mount("patient"); sound.mount("doctor"); await sound.activate();
