@@ -73,12 +73,6 @@ Deno.serve(async (req) => {
       }
       if (consult.room_url) {
         const name = roomNameFromUrl(consult.room_url);
-        const expired = await fetch(`https://api.daily.co/v1/rooms/${name}`, {
-          method: "POST", headers: { Authorization: `Bearer ${DAILY_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ properties: { exp: Math.floor(Date.now() / 1000), eject_at_room_exp: true } }),
-        });
-        await expired.text();
-        if (!expired.ok && expired.status !== 404) throw new Error("Consultation ended, but room cleanup failed. Retry ending the call.");
         const deleted = await fetch(`https://api.daily.co/v1/rooms/${name}`, { method: "DELETE", headers: { Authorization: `Bearer ${DAILY_API_KEY}` } });
         await deleted.text();
         if (!deleted.ok && deleted.status !== 404) throw new Error("Consultation ended, but room cleanup failed. Retry ending the call.");
