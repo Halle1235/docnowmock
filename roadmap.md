@@ -1,4 +1,5 @@
 # Tasks
+- [ ] Streamline homepage → patient intake → medical reason and required consents → secure AED 249 checkout → immediate waiting room; add authenticated rejoin link and email delivery. Payment activation needs confirmation; insurance co-pay needs eligibility/pricing details.
 - [x] Make booking notification sounds enabled by default; signed-in patient default/mute/unmute verified and focused sound tests pass. Browser interaction remains required for audio.
 - [x] Add official UAE emergency warning (998 ambulance, 999 police) and international calling-code selector; five phone tests and signed-in selection/mobile layout verified. Existing retired sample-claim notification test fails independently of these changes.
 - [x] Handle duplicate doctor account emails safely; six handler tests and signed-in admin conflict feedback verified without changing existing accounts.
