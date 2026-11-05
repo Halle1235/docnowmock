@@ -41,12 +41,13 @@ const Registration = () => {
     if (intake || !user || access !== "patient") return;
     setEmail(user.email || "");
     let active = true;
-    supabase.from("profiles").select("full_name, phone, passport_number, date_of_birth").eq("id", user.id).maybeSingle().then(({ data }) => {
+    supabase.from("profiles").select("full_name, phone, passport_number, date_of_birth, identification_type, emirates_id, contact_email").eq("id", user.id).maybeSingle().then(({ data }) => {
       if (!active || !data) return;
       const contact = splitBookingPhone(data.phone || "");
       setFullName(data.full_name); setPhone(contact.national); setPhoneCountry(contact.country);
-      const identity = data.passport_number || "";
-      setPassportNumber(identity); setIdentityType(/^784-/.test(identity) ? "resident" : identity ? "visitor" : "resident");
+      setEmail(data.contact_email || user.email || "");
+      const identity = data.identification_type === 'resident' ? data.emirates_id || '' : data.passport_number || "";
+      setPassportNumber(identity); setIdentityType(data.identification_type === 'resident' || /^784-/.test(identity) ? "resident" : identity ? "visitor" : "resident");
       setDateOfBirth(/^\d{4}-\d{2}-\d{2}$/.test(data.date_of_birth || "") ? data.date_of_birth || "" : "");
     });
     return () => { active = false; };

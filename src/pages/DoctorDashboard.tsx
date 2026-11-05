@@ -251,7 +251,7 @@ const LiveDoctorDashboard = () => {
                           
                           <div className="flex gap-4 text-sm text-muted-foreground">
                             <span>{t('dashboard.payment')}: {consultation.payment_amount}  AED</span>
-                            <span>{t('dashboard.status')}: {getStatusBadge(consultation.payment_status)}</span>
+                            <span>{t('dashboard.status')}: <Badge variant="outline">{consultation.payment_status === 'pending' ? t('payment.unpaid') : getStatusBadge(consultation.payment_status)}</Badge></span>
                             <span>{t('dashboard.created')}: {new Date(consultation.created_at).toLocaleString()}</span>
                           </div>
                         </div>
@@ -315,6 +315,7 @@ const LiveDoctorDashboard = () => {
                           
                           <div className="flex gap-4 text-sm text-muted-foreground">
                             <span>{t('dashboard.payment')}: {consultation.payment_amount}  AED</span>
+                            {consultation.payment_status === 'pending' && <Badge variant="outline">{t('payment.unpaid')}</Badge>}
                             <span>{t('dashboard.created')}: {new Date(consultation.created_at).toLocaleString()}</span>
                           </div>
                         </div>
