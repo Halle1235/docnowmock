@@ -1,4 +1,5 @@
 # Tasks
+- [ ] Switch to real accounts, remove sample experiences, require doctor approval, and verify account access.
 - [x] Add shared doctor/patient booking alert sounds; browser confirms activated doctor arrival and patient acceptance tones through shared booking reads, mute controls, and deduplication tests.
 - [x] Open an editable patient journal after doctor-confirmed call completion; actual sample call, automatic journal opening, post-call save/readback, Completed history, and 360px layout verified. Deployed permission/audit checks pass; real verified-doctor end-to-end remains blocked below.
 - [x] Connect mock payment to the fixed fictional doctor queue and show a doctor name only after acceptance; 16 focused tests pass, same-browser two-tab payment/claim/name readback verified without auth or database requests. Actual patient identity and separate-device booking remain unavailable in mock mode.
