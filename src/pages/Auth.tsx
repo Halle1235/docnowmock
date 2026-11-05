@@ -10,7 +10,6 @@ import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAccount } from "@/components/AccountProvider";
 import { accountDestination } from "@/lib/account-access";
-import SocialSignIn from "@/components/SocialSignIn";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -139,7 +138,6 @@ const Auth = () => {
                 </p>
               )}
               <Button type="button" variant="link" className="w-full" onClick={() => setSearchParams({ as: isPatient ? "patient" : "doctor", mode: signingUp ? "login" : "signup" })}>{signingUp ? "Already have an account? Sign in" : "Create an account"}</Button>
-              <SocialSignIn />
             </form>}
           </div>
 

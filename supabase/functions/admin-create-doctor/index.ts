@@ -20,17 +20,20 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!SUPABASE_URL || !anonKey || !serviceKey) return json({ error: "Account service is unavailable" }, 500);
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json({ error: "Missing auth" }, 401);
 
-    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    const userClient = createClient(SUPABASE_URL, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData.user) return json({ error: "Unauthorized" }, 401);
 
-    const admin = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const admin = createClient(SUPABASE_URL, serviceKey);
 
     const { data: isAdmin } = await admin
       .from("user_roles")
@@ -51,6 +54,13 @@ Deno.serve(async (req) => {
       user_metadata: { full_name },
     });
     if (createErr || !created.user) {
+      if (createErr?.code === "email_exists" || createErr?.code === "user_already_exists" ||
+          /a user with this email address has already been registered/i.test(createErr?.message ?? "")) {
+        return json({
+          code: "EMAIL_ALREADY_REGISTERED",
+          error: "This email already has an account. Review its doctor application under Doctor verification. If no application is listed, the account holder must sign in and submit one. The existing account and password have not been changed.",
+        }, 409);
+      }
       return json({ error: createErr?.message ?? "Could not create account" }, 400);
     }
 

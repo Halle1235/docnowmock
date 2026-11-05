@@ -9,6 +9,7 @@
 - Original routes require validated real account access through the shared account provider; server-side roles and doctor verification remain the authorization boundary.
 - Mock mode stays disabled, and retired test-queue RPCs and demo-call credentials remain inaccessible to app visitors.
 - Doctor applications use an authenticated bounded RPC, remain unverified with no doctor privileges until admin approval, and protect identity and licence details from self-editing.
+- Admin doctor creation treats duplicate emails as conflicts, never overwriting passwords or promoting existing accounts; existing accounts follow explicit application approval to prevent accidental account takeover.
 - Paid booking stays disabled until a trusted payment confirmation flow exists; clients cannot insert falsely paid consultations.
 - Doctor sample workspace state lives only in memory and is shared across original dashboard/call navigation; never persist clinical drafts in browser storage or use sample state for real permissions.
 - Sample call statistics start on the meeting-joined event and finish on leaving, not on claiming a visit, to avoid reporting queue time as call duration.
