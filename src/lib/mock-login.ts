@@ -1,6 +1,6 @@
 // Mock mode never creates an authenticated session or grants live account access.
 // The original screens show sample data only while this is on.
-export const MOCK_LOGIN_ENABLED = true;
+export const MOCK_LOGIN_ENABLED = false;
 
 export type MockRole = "patient" | "doctor" | "admin";
 

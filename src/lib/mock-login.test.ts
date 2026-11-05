@@ -4,8 +4,8 @@ import { strict as assert } from "node:assert";
 import { demoCallPath, isMockRole, MOCK_LOGIN_ENABLED, mockLoginDestination } from "./mock-login";
 
 describe("temporary mock logins", () => {
-  test("logins use mock mode for now", () => {
-    assert.equal(MOCK_LOGIN_ENABLED, true);
+  test("real accounts disable all mock entry points", () => {
+    assert.equal(MOCK_LOGIN_ENABLED, false);
   });
   test("logins lead to the original screens", () => {
     assert.equal(mockLoginDestination("patient"), "/my-visits");
