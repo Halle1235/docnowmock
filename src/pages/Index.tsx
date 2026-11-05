@@ -200,7 +200,7 @@ const Index = () => {
               ))}
               <span aria-hidden>•</span>
               <button
-                onClick={() => navigate("/auth")}
+                onClick={() => navigate("/auth?as=doctor")}
                 className="hover:text-primary underline-offset-4 hover:underline transition-colors"
               >
                 {t('header.doctorPortal')}
