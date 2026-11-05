@@ -1,4 +1,4 @@
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
 const json = (body: unknown, status = 200, extra: Record<string, string> = {}) =>
@@ -52,21 +52,31 @@ Deno.serve(async (req) => {
     const language = body.language === "ar" ? "Arabic" : "English";
     if (!/^[0-9a-f-]{36}$/i.test(consultationId)) return json({ error: "Invalid consultationId" }, 400);
 
-    const { data: consult, error: consultError } = await userClient.rpc("get_authorized_call_record", { _consultation_id: consultationId });
+    const { data: consult, error: consultError } = await userClient.rpc("get_authorized_call_record", {
+      _consultation_id: consultationId,
+    });
     if (consultError || !consult) return json({ error: "Consultation access denied" }, 403);
     if (consult.doctor_id !== userData.user.id) return json({ error: "Only the assigned doctor can do this" }, 403);
 
     if (body.action === "approve") {
-      const { data: draft, error: draftError } = await userClient.rpc("get_authorized_summary_draft", { _consultation_id: consultationId });
+      const { data: draft, error: draftError } = await userClient.rpc("get_authorized_summary_draft", {
+        _consultation_id: consultationId,
+      });
       if (draftError) return json({ error: "Draft access denied" }, 403);
       if (!draft) return json({ error: "There is no summary waiting for review." }, 400);
-      const { error: apErr } = await userClient.from("consultations").update({
-        visit_summary: draft,
-        visit_summary_approved_at: new Date().toISOString(),
-        visit_summary_approved_by: userData.user.id,
-      }).eq("id", consultationId);
+      const { error: apErr } = await userClient
+        .from("consultations")
+        .update({
+          visit_summary: draft,
+          visit_summary_approved_at: new Date().toISOString(),
+          visit_summary_approved_by: userData.user.id,
+        })
+        .eq("id", consultationId);
       if (apErr) return json({ error: "Could not approve summary" }, 500);
-      const { error: deleteError } = await userClient.from("visit_summary_drafts").delete().eq("consultation_id", consultationId);
+      const { error: deleteError } = await userClient
+        .from("visit_summary_drafts")
+        .delete()
+        .eq("consultation_id", consultationId);
       if (deleteError) return json({ error: "Could not clear approved draft" }, 500);
       return json({ summary: draft, approved: true }, 200);
     }
@@ -107,7 +117,9 @@ ${notes}
       const t = await upstream.text().catch(() => "");
       console.error("Gateway error", upstream.status, t);
       let msg = "AI request failed";
-      try { msg = JSON.parse(t)?.error?.message || JSON.parse(t)?.message || msg; } catch {}
+      try {
+        msg = JSON.parse(t)?.error?.message || JSON.parse(t)?.message || msg;
+      } catch {}
       if (upstream.status === 429) msg = "Too many requests, please try again in a moment.";
       if (upstream.status === 402) msg = "AI credits are used up. Please add credits in workspace billing.";
       return json({ error: msg }, upstream.status, extra);
@@ -115,7 +127,9 @@ ${notes}
 
     // Parse SSE
     const reader = upstream.body.pipeThrough(new TextDecoderStream()).getReader();
-    let buf = "", text = "", streamErr = "";
+    let buf = "",
+      text = "",
+      streamErr = "";
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
@@ -139,7 +153,11 @@ ${notes}
     if (!text.trim()) return json({ error: "The AI returned an empty summary." }, 502, extra);
 
     let summary: unknown;
-    try { summary = JSON.parse(text); } catch { return json({ error: "Could not read AI summary" }, 502, extra); }
+    try {
+      summary = JSON.parse(text);
+    } catch {
+      return json({ error: "Could not read AI summary" }, 502, extra);
+    }
 
     // Save as a private draft; patients only see it after the doctor approves it
     const now = new Date().toISOString();

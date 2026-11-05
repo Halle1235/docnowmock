@@ -1,4 +1,4 @@
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
 const json = (body: unknown, status = 200) =>
@@ -14,7 +14,9 @@ Deno.serve(async (req) => {
     if (!DAILY_API_KEY || !SUPABASE_URL || !SERVICE_KEY) throw new Error("Backend not configured");
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json({ error: "Missing auth" }, 401);
-    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") || "", { global: { headers: { Authorization: authHeader } } });
+    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") || "", {
+      global: { headers: { Authorization: authHeader } },
+    });
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData.user) return json({ error: "Unauthorized" }, 401);
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -32,7 +34,12 @@ Deno.serve(async (req) => {
     ]);
     if (role && profile?.is_verified === true) return json({ ejected: 0, skipped: "Doctor still has access" });
 
-    const { data: visits, error } = await admin.from("consultations").select("room_url").eq("doctor_id", doctorId).in("status", ["claimed", "in_progress"]).not("room_url", "is", null);
+    const { data: visits, error } = await admin
+      .from("consultations")
+      .select("room_url")
+      .eq("doctor_id", doctorId)
+      .in("status", ["claimed", "in_progress"])
+      .not("room_url", "is", null);
     if (error) throw error;
     let ejected = 0;
     for (const v of visits ?? []) {

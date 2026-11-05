@@ -1,4 +1,4 @@
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 
@@ -54,12 +54,19 @@ Deno.serve(async (req) => {
       user_metadata: { full_name },
     });
     if (createErr || !created.user) {
-      if (createErr?.code === "email_exists" || createErr?.code === "user_already_exists" ||
-          /a user with this email address has already been registered/i.test(createErr?.message ?? "")) {
-        return json({
-          code: "EMAIL_ALREADY_REGISTERED",
-          error: "This email already has an account. Review its doctor application under Doctor verification. If no application is listed, the account holder must sign in and submit one. The existing account and password have not been changed.",
-        }, 409);
+      if (
+        createErr?.code === "email_exists" ||
+        createErr?.code === "user_already_exists" ||
+        /a user with this email address has already been registered/i.test(createErr?.message ?? "")
+      ) {
+        return json(
+          {
+            code: "EMAIL_ALREADY_REGISTERED",
+            error:
+              "This email already has an account. Review its doctor application under Doctor verification. If no application is listed, the account holder must sign in and submit one. The existing account and password have not been changed.",
+          },
+          409,
+        );
       }
       return json({ error: createErr?.message ?? "Could not create account" }, 400);
     }
