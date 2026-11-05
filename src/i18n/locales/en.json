@@ -6,7 +6,17 @@
     "patientLogin": "I'm a patient",
     "doctorLogin": "I'm a doctor",
     "logout": "Logout",
-    "doctors": "DocNow Doctors"
+    "doctors": "DocNow Doctors",
+    "myVisits": "My visits",
+    "doctorDashboard": "Doctor portal",
+    "adminPortal": "Admin portal"
+  },
+  "visits": {
+    "tabVisits": "Consultations & Visits",
+    "tabJournal": "My Medical Journal",
+    "allRecords": "All my records",
+    "filterByVisit": "Filter:",
+    "showAll": "Show all my records"
   },
   "hero": {
     "title": "Meet doctors directly via video",
@@ -97,13 +107,31 @@
     "takeConsultation": "Take consultation",
     "assigning": "Assigning...",
     "startVideo": "Start video",
+    "rejoinVideo": "Rejoin video call",
     "consultationAssigned": "Consultation assigned",
     "canStartVideo": "You can now start the video call",
     "couldNotAssign": "Could not assign consultation",
     "startingVideo": "Starting video call",
     "videoComingSoon": "Video functionality coming soon",
     "couldNotLoad": "Could not load consultations",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "onlineStatus": "Online & Available",
+    "inQueue": "Waiting in Queue",
+    "inProgress": "In Progress",
+    "completed": "Completed",
+    "totalVisits": "Total Consultations",
+    "allTab": "All",
+    "activeTab": "Active",
+    "completedTab": "Completed",
+    "queueClear": "Queue is clear",
+    "queueClearDesc": "No patients are currently waiting. You will receive an audio chime and notification the moment a new booking arrives.",
+    "clinicalTools": "Clinical Tools & Compliance",
+    "emergencyProtocol": "Emergency Protocol",
+    "emergencyNotice": "For life-threatening symptoms, immediately direct the patient to UAE Ambulance (998) or Police (999).",
+    "prescriptionsNotice": "MOHAP Telehealth: Controlled medications require an in-person hospital visit.",
+    "systemReady": "Telehealth System",
+    "devicesReady": "Audio & Camera Ready",
+    "searchPlaceholder": "Search by patient name, phone, or symptoms..."
   },
   "registration": {
     "title": "Patient details",

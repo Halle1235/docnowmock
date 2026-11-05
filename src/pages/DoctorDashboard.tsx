@@ -1,12 +1,27 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, User, LogOut, Video, CheckCircle } from "lucide-react";
+import {
+  Clock,
+  User,
+  LogOut,
+  Video,
+  CheckCircle2,
+  Activity,
+  Search,
+  Stethoscope,
+  BookOpen,
+  Phone,
+  FileText,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import VisitSummaryDialog from "@/components/VisitSummaryDialog";
@@ -14,6 +29,7 @@ import PatientJournal from "@/components/PatientJournal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import BookingNotifications from "@/components/BookingNotifications";
 import { useBookingNotifications } from "@/hooks/use-booking-notifications";
+import { cn } from "@/lib/utils";
 
 interface Consultation {
   id: string;
@@ -36,26 +52,35 @@ const LiveDoctorDashboard = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [userEmail, setUserEmail] = useState("");
-  const [journalId, setJournalId] = useState<string | null>(typeof location.state?.journalId === "string" ? location.state.journalId : null);
+  const [doctorInfo, setDoctorInfo] = useState({
+    fullName: "Doctor",
+    specialization: "General Practice & Telehealth",
+    licenseNumber: "DHA Licensed",
+    isAvailable: true,
+  });
+  const [journalId, setJournalId] = useState<string | null>(
+    typeof location.state?.journalId === "string" ? location.state.journalId : null,
+  );
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const claimInFlight = useRef(false);
   const [historySearch, setHistorySearch] = useState("");
+  const [activeTab, setActiveTab] = useState<"all" | "active" | "completed">("all");
+
   useBookingNotifications("doctor", consultations, !loading);
 
   useEffect(() => {
-    checkAuth().then((allowed) => { if (allowed) loadConsultations(); });
+    checkAuth().then((allowed) => {
+      if (allowed) loadConsultations();
+    });
 
     const channel = supabase
-      .channel('consultations-doctor-dashboard')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'consultations' },
-        () => {
-          loadConsultations();
-        }
-      )
+      .channel("consultations-doctor-dashboard")
+      .on("postgres_changes", { event: "*", schema: "public", table: "consultations" }, () => {
+        loadConsultations();
+      })
       .subscribe();
 
     return () => {
@@ -64,8 +89,10 @@ const LiveDoctorDashboard = () => {
   }, []);
 
   const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) {
       navigate("/auth");
       return false;
@@ -73,38 +100,58 @@ const LiveDoctorDashboard = () => {
 
     setUserEmail(user.email || "");
 
-    const { data: verified, error } = await supabase.rpc('is_authorized_doctor', { _user_id: user.id });
+    const [verifiedRes, profileRes, docProfileRes] = await Promise.all([
+      supabase.rpc("is_authorized_doctor", { _user_id: user.id }),
+      supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+      supabase
+        .from("doctor_profiles")
+        .select("specialization, license_number, is_available")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+    ]);
 
-    if (error || !verified) {
+    if (verifiedRes.error || !verifiedRes.data) {
       toast({
-        title: "Åtkomst nekad",
-        description: "Ditt läkarkonto är inte verifierat än.",
+        title: "Access denied",
+        description: "Your doctor account has not been approved by an administrator yet.",
         variant: "destructive",
       });
       navigate("/my-visits");
       return false;
     }
+
+    setDoctorInfo({
+      fullName: profileRes.data?.full_name || user.email?.split("@")[0] || "Doctor",
+      specialization: docProfileRes.data?.specialization || "Telehealth Practitioner",
+      licenseNumber: docProfileRes.data?.license_number || "DHA Licensed",
+      isAvailable: docProfileRes.data?.is_available ?? true,
+    });
+
     return true;
   };
 
-  const loadConsultations = async () => {
+  const loadConsultations = async (isManual = false) => {
+    if (isManual) setRefreshing(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase.rpc('list_doctor_consultations');
+      const { data, error } = await supabase.rpc("list_doctor_consultations");
 
       if (error) throw error;
 
-      setConsultations(Array.isArray(data) ? data as unknown as Consultation[] : []);
+      setConsultations(Array.isArray(data) ? (data as unknown as Consultation[]) : []);
     } catch (error: any) {
       toast({
-        title: t('dashboard.couldNotLoad'),
+        title: t("dashboard.couldNotLoad"),
         description: error.message,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
+      if (isManual) setRefreshing(false);
     }
   };
 
@@ -114,23 +161,28 @@ const LiveDoctorDashboard = () => {
     setClaimingId(consultationId);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { error } = await supabase.rpc('claim_patient_consultation', { _consultation_id: consultationId });
+      const { error } = await supabase.rpc("claim_patient_consultation", { _consultation_id: consultationId });
 
       if (error) throw error;
 
       toast({
-        title: t('dashboard.consultationAssigned'),
-        description: t('dashboard.canStartVideo'),
+        title: t("dashboard.consultationAssigned"),
+        description: t("dashboard.canStartVideo"),
       });
 
       loadConsultations();
     } catch (error: any) {
       toast({
-        title: error.code === "40001" ? "Consultation already taken" : t('dashboard.couldNotAssign'),
-        description: error.code === "40001" ? "Another doctor has taken this booking. The queue has been refreshed." : error.message,
+        title: error.code === "40001" ? "Consultation already taken" : t("dashboard.couldNotAssign"),
+        description:
+          error.code === "40001"
+            ? "Another doctor has taken this booking. The queue has been refreshed."
+            : error.message,
         variant: "destructive",
       });
       await loadConsultations();
@@ -141,10 +193,15 @@ const LiveDoctorDashboard = () => {
   };
 
   useEffect(() => {
-    const refresh = () => { void loadConsultations(); };
+    const refresh = () => {
+      void loadConsultations();
+    };
     window.addEventListener("focus", refresh);
     const timer = window.setInterval(refresh, 15000);
-    return () => { window.removeEventListener("focus", refresh); window.clearInterval(timer); };
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.clearInterval(timer);
+    };
   }, []);
 
   const startVideo = (consultationId: string) => {
@@ -157,192 +214,585 @@ const LiveDoctorDashboard = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      pending: "outline",
-      claimed: "secondary",
-      in_progress: "default",
-      completed: "default",
-      cancelled: "destructive"
-    };
-
-    return (
-      <Badge variant={variants[status] || "default"}>
-        {t(`status.${status}`)}
-      </Badge>
-    );
+    switch (status) {
+      case "in_progress":
+        return (
+          <Badge className="bg-primary/15 text-primary border-primary/30 flex items-center gap-1.5 font-medium">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+            {t(`status.${status}`)}
+          </Badge>
+        );
+      case "claimed":
+        return (
+          <Badge
+            variant="secondary"
+            className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 flex items-center gap-1.5 font-medium"
+          >
+            <Clock className="h-3 w-3" />
+            {t(`status.${status}`)}
+          </Badge>
+        );
+      case "completed":
+        return (
+          <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 flex items-center gap-1.5 font-medium">
+            <CheckCircle2 className="h-3 w-3" />
+            {t(`status.${status}`)}
+          </Badge>
+        );
+      case "cancelled":
+        return (
+          <Badge variant="destructive" className="flex items-center gap-1.5 font-medium">
+            <AlertCircle className="h-3 w-3" />
+            {t(`status.${status}`)}
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="font-medium">
+            {t(`status.${status}`)}
+          </Badge>
+        );
+    }
   };
+
+  // Filter derivations
+  const pendingConsultations = useMemo(() => consultations.filter((c) => c.status === "pending"), [consultations]);
+  const myConsultations = useMemo(() => consultations.filter((c) => c.status !== "pending"), [consultations]);
+  const activeConsultations = useMemo(
+    () => consultations.filter((c) => ["claimed", "in_progress"].includes(c.status)),
+    [consultations],
+  );
+  const completedConsultations = useMemo(() => consultations.filter((c) => c.status === "completed"), [consultations]);
+
+  const filteredConsultations = useMemo(() => {
+    return myConsultations.filter((c) => {
+      if (activeTab === "active" && !["claimed", "in_progress"].includes(c.status)) return false;
+      if (activeTab === "completed" && c.status !== "completed") return false;
+
+      if (historySearch.trim()) {
+        const q = historySearch.trim().toLowerCase();
+        const patientName = (c.profiles?.full_name || "").toLowerCase();
+        const phone = (c.profiles?.phone || "").toLowerCase();
+        const reasonCat = (c.reason_category || "").toLowerCase();
+        const reasonDesc = (c.reason_description || "").toLowerCase();
+        return patientName.includes(q) || phone.includes(q) || reasonCat.includes(q) || reasonDesc.includes(q);
+      }
+      return true;
+    });
+  }, [myConsultations, activeTab, historySearch]);
+
+  const todayFormatted = new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date());
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">{t('dashboard.loading')}</p>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary animate-pulse">
+          <Stethoscope className="h-6 w-6" />
+        </div>
+        <p className="text-sm font-medium text-muted-foreground">{t("dashboard.loading")}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-primary">{t('header.doctors')}</h1>
-            <div className="flex items-center gap-4">
-              <BookingNotifications role="doctor" />
-              <LanguageSwitcher />
-              <span className="text-sm text-muted-foreground">{userEmail}</span>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                {t('header.logout')}
-              </Button>
+    <div className="min-h-screen bg-slate-50/60 dark:bg-background text-foreground">
+      {/* Top Header */}
+      <header className="border-b bg-card sticky top-0 z-20">
+        <div className="mx-auto flex min-h-16 max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Stethoscope className="h-5 w-5" />
             </div>
+            <div>
+              <span className="text-xl font-bold tracking-tight text-primary">DocNow</span>
+              <Badge variant="outline" className="ms-2 border-primary/20 text-xs text-primary font-medium">
+                Doctor Portal
+              </Badge>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-4">
+            <BookingNotifications role="doctor" />
+            <LanguageSwitcher />
+
+            <div className="hidden sm:flex items-center gap-2.5 border-s ps-4">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                  {doctorInfo.fullName.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="text-start">
+                <p className="text-xs font-medium leading-none">{doctorInfo.fullName}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{userEmail}</p>
+              </div>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4 me-1.5" />
+              <span className="hidden sm:inline">{t("header.logout")}</span>
+            </Button>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-5xl mx-auto">
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold mb-2">{t('dashboard.title')}</h2>
-            <p className="text-muted-foreground">
-              {t('dashboard.subtitle')}
-            </p>
-          </div>
-
-          <div className="mb-8">
-            <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
-              {t('dashboard.pendingTitle')} ({consultations.filter(c => c.status === 'pending').length})
-            </h3>
-            
-            <div className="space-y-4">
-              {consultations.filter(c => c.status === 'pending').length === 0 ? (
-                <Card className="p-8 text-center">
-                  <p className="text-muted-foreground">{t('dashboard.noPending')}</p>
-                </Card>
-              ) : (
-                consultations
-                  .filter(c => c.status === 'pending')
-                  .map((consultation) => (
-                     <Card key={consultation.id} className="p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-3">
-                            <User className="h-5 w-5 text-muted-foreground" />
-                            <div>
-                              <h4 className="font-semibold">{consultation.profiles?.full_name || t('dashboard.patient')}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                {t('dashboard.phone')}: {consultation.profiles?.phone || t('dashboard.notProvided')}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          {consultation.reason_category && (
-                            <div className="mb-3 p-3 bg-muted/50 rounded-lg">
-                              <div className="font-medium text-sm mb-1">
-                                {t('dashboard.reason')}: {t(`medicalReason.categories.${consultation.reason_category}`)}
-                              </div>
-                              {consultation.reason_description && (
-                                <div className="text-sm text-muted-foreground">
-                                  {t('dashboard.symptoms')}: {consultation.reason_description}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          
-                          <div className="flex gap-4 text-sm text-muted-foreground">
-                            <span>{t('dashboard.payment')}: {consultation.payment_amount}  AED</span>
-                            <span>{t('dashboard.status')}: <Badge variant="outline">{consultation.payment_status === 'pending' ? t('payment.unpaid') : getStatusBadge(consultation.payment_status)}</Badge></span>
-                            <span>{t('dashboard.created')}: {new Date(consultation.created_at).toLocaleString()}</span>
-                          </div>
-                        </div>
-
-                        <Button
-                          onClick={() => claimConsultation(consultation.id)}
-                          disabled={claimingId !== null}
-                          className="ml-4"
-                        >
-                          {claimingId === consultation.id ? t('dashboard.assigning') : t('dashboard.takeConsultation')}
-                        </Button>
-                      </div>
-                    </Card>
-                  ))
-              )}
+      <main className="mx-auto max-w-5xl px-4 py-7 sm:px-6 lg:py-8 space-y-7">
+        {/* Clinician Welcome & Status Banner */}
+        <div className="rounded-2xl border bg-card p-5 sm:p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-14 w-14 border-2 border-primary/20 shadow-sm">
+                <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
+                  {doctorInfo.fullName.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h1 className="text-2xl font-bold tracking-tight">Dr. {doctorInfo.fullName}</h1>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    {t("dashboard.onlineStatus", "Online & Available")}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
+                  {doctorInfo.specialization} · {doctorInfo.licenseNumber || "DHA Licensed"}
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <div className="mb-4"><label htmlFor="live-history-search" className="text-sm font-medium">Search patient history</label><Input id="live-history-search" className="mt-2" value={historySearch} onChange={e => setHistorySearch(e.target.value)} placeholder="Patient name" /></div>
-            <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-primary" />
-              {t('dashboard.myConsultationsTitle')} ({consultations.filter(c => c.status !== 'pending').length})
-            </h3>
-            
-            <div className="space-y-4">
-              {consultations.filter(c => c.status !== 'pending').length === 0 ? (
-                <Card className="p-8 text-center">
-                  <p className="text-muted-foreground">{t('dashboard.noAssigned')}</p>
-                </Card>
-              ) : (
-                consultations
-                  .filter(c => c.status !== 'pending' && (c.profiles?.full_name || "").toLocaleLowerCase().includes(historySearch.trim().toLocaleLowerCase()))
-                  .map((consultation) => (
-                    <Card key={consultation.id} className="p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-3">
-                            <User className="h-5 w-5 text-muted-foreground" />
-                            <div>
-                              <h4 className="font-semibold">{consultation.profiles?.full_name || t('dashboard.patient')}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                {t('dashboard.phone')}: {consultation.profiles?.phone || t('dashboard.notProvided')}
-                              </p>
-                            </div>
-                            {getStatusBadge(consultation.status)}
-                          </div>
-                          
-                          {consultation.reason_category && (
-                            <div className="mb-3 p-3 bg-muted/50 rounded-lg">
-                              <div className="font-medium text-sm mb-1">
-                                {t('dashboard.reason')}: {t(`medicalReason.categories.${consultation.reason_category}`)}
-                              </div>
-                              {consultation.reason_description && (
-                                <div className="text-sm text-muted-foreground">
-                                  {t('dashboard.symptoms')}: {consultation.reason_description}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          
-                          <div className="flex gap-4 text-sm text-muted-foreground">
-                            <span>{t('dashboard.payment')}: {consultation.payment_amount}  AED</span>
-                            {consultation.payment_status === 'pending' && <Badge variant="outline">{t('payment.unpaid')}</Badge>}
-                            <span>{t('dashboard.created')}: {new Date(consultation.created_at).toLocaleString()}</span>
-                          </div>
-                        </div>
-
-                        <div className="ml-4 flex flex-col gap-2 items-end"><Button variant="outline" onClick={() => setJournalId(consultation.id)}>Patient journal</Button>
-                          {consultation.status === 'claimed' && (
-                            <Button onClick={() => startVideo(consultation.id)}>
-                              <Video className="h-4 w-4 mr-2" />
-                              {t('dashboard.startVideo')}
-                            </Button>
-                          )}
-                          {<VisitSummaryDialog
-                            consultationId={consultation.id}
-                            initialNotes={(consultation as any).notes}
-                            initialSummary={(consultation as any).visit_summary}
-                            onSaved={loadConsultations}
-                          />}
-                        </div>
-                      </div>
-                    </Card>
-                  ))
-              )}
+            <div className="flex items-center sm:flex-col sm:items-end justify-between border-t sm:border-t-0 pt-3 sm:pt-0 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-foreground">{todayFormatted}</span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-7 w-7 ms-2"
+                  onClick={() => loadConsultations(true)}
+                  disabled={refreshing}
+                  title="Refresh queue"
+                >
+                  <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+                </Button>
+              </div>
+              <span className="text-[11px] mt-0.5">Dubai, United Arab Emirates (GST)</span>
             </div>
           </div>
         </div>
-      </div>
-      <Dialog open={!!journalId} onOpenChange={open => { if (!open) setJournalId(null); }}><DialogContent className="w-[calc(100%-2rem)] max-w-xl max-h-[90vh] overflow-y-auto" aria-describedby={undefined}><DialogHeader><DialogTitle>Patient medical journal</DialogTitle></DialogHeader>{journalId && <PatientJournal key={journalId} consultationId={journalId} canAdd={consultations.some(c => c.id === journalId && ["claimed", "in_progress", "completed"].includes(c.status))} />}</DialogContent></Dialog>
+
+        {/* Top 4 KPI Metric Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {/* 1. Waiting in Queue */}
+          <Card
+            className={cn(
+              "p-4 border transition-all",
+              pendingConsultations.length > 0 ? "border-amber-500/40 bg-amber-500/5 shadow-sm" : "bg-card",
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">
+                {t("dashboard.inQueue", "Waiting in Queue")}
+              </span>
+              <div
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-lg",
+                  pendingConsultations.length > 0
+                    ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                <Clock className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-bold tracking-tight">{pendingConsultations.length}</span>
+              <span className="text-[11px] text-muted-foreground">
+                {pendingConsultations.length === 1 ? "patient" : "patients"}
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground truncate">
+              {pendingConsultations.length > 0 ? "Requires doctor attention" : "Queue is clear"}
+            </p>
+          </Card>
+
+          {/* 2. In Progress / In Call */}
+          <Card
+            className={cn(
+              "p-4 border transition-all",
+              activeConsultations.length > 0 ? "border-primary/40 bg-primary/5 shadow-sm" : "bg-card",
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">
+                {t("dashboard.inProgress", "In Progress")}
+              </span>
+              <div
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-lg",
+                  activeConsultations.length > 0 ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground",
+                )}
+              >
+                <Video className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-bold tracking-tight">{activeConsultations.length}</span>
+              <span className="text-[11px] text-muted-foreground">
+                {activeConsultations.length === 1 ? "active call" : "active calls"}
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground truncate">
+              {activeConsultations.length > 0 ? "Call ready to join" : "No active calls"}
+            </p>
+          </Card>
+
+          {/* 3. Completed Visits */}
+          <Card className="p-4 border bg-card">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">{t("dashboard.completed", "Completed")}</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-bold tracking-tight">{completedConsultations.length}</span>
+              <span className="text-[11px] text-muted-foreground">visits</span>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground truncate">Documented in journal</p>
+          </Card>
+
+          {/* 4. Total Consultations */}
+          <Card className="p-4 border bg-card">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">
+                {t("dashboard.totalVisits", "Total Consultations")}
+              </span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Activity className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-bold tracking-tight">{myConsultations.length}</span>
+              <span className="text-[11px] text-muted-foreground">records</span>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground truncate">All assigned consultations</p>
+          </Card>
+        </div>
+
+        <div className="space-y-7">
+          {/* Section 1: Pending Consultations Queue */}
+          <div>
+            <div className="mb-3.5 flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Clock className="h-5 w-5 text-amber-500" />
+                {t("dashboard.pendingTitle")} ({pendingConsultations.length})
+              </h2>
+              {pendingConsultations.length > 0 && (
+                <Badge variant="outline" className="border-amber-500/30 text-amber-600 bg-amber-500/10 text-xs">
+                  Action required
+                </Badge>
+              )}
+            </div>
+
+            {pendingConsultations.length === 0 ? (
+              <Card className="p-6 text-center border-dashed bg-card/60">
+                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mb-3">
+                  <CheckCircle2 className="h-6 w-6" />
+                </div>
+                <h3 className="text-sm font-semibold">{t("dashboard.queueClear", "Queue is clear")}</h3>
+                <p className="mt-1 max-w-md mx-auto text-xs text-muted-foreground">
+                  {t(
+                    "dashboard.queueClearDesc",
+                    "No patients are currently waiting. You will receive an audio chime and notification the moment a new booking arrives.",
+                  )}
+                </p>
+                <div className="mt-4 flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Real-time queue listener active</span>
+                </div>
+              </Card>
+            ) : (
+              <div className="space-y-3.5">
+                {pendingConsultations.map((consultation) => (
+                  <Card
+                    key={consultation.id}
+                    className="p-5 border-amber-500/40 bg-amber-500/[0.03] shadow-sm hover:shadow transition-shadow"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      <div className="flex-1 space-y-2.5">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10 border border-amber-500/30">
+                            <AvatarFallback className="bg-amber-500/10 text-amber-700 font-semibold text-xs">
+                              {(consultation.profiles?.full_name || "P").slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h4 className="font-semibold text-base">
+                              {consultation.profiles?.full_name || t("dashboard.patient")}
+                            </h4>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                              <Phone className="h-3 w-3" />
+                              {consultation.profiles?.phone || t("dashboard.notProvided")}
+                            </p>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className="border-amber-500/30 text-amber-600 bg-amber-500/10 ms-auto sm:ms-2 text-xs"
+                          >
+                            Waiting
+                          </Badge>
+                        </div>
+
+                        {consultation.reason_category && (
+                          <div className="p-3 bg-card rounded-xl border text-xs space-y-1">
+                            <div className="font-semibold text-primary">
+                              {t("dashboard.reason")}: {t(`medicalReason.categories.${consultation.reason_category}`)}
+                            </div>
+                            {consultation.reason_description && (
+                              <p className="text-muted-foreground">
+                                {t("dashboard.symptoms")}: {consultation.reason_description}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                          <span>
+                            {t("dashboard.payment")}: {consultation.payment_amount} AED
+                          </span>
+                          <span>•</span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {new Date(consultation.created_at).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                      </div>
+
+                      <Button
+                        onClick={() => claimConsultation(consultation.id)}
+                        disabled={claimingId !== null}
+                        className="sm:self-center shrink-0 gap-2 shadow-sm font-semibold"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        {claimingId === consultation.id ? t("dashboard.assigning") : t("dashboard.takeConsultation")}
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: My Consultations & Patient Records */}
+          <div>
+            <div className="mb-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                  {t("dashboard.myConsultationsTitle")} ({myConsultations.length})
+                </h2>
+
+                {/* Filter Tabs */}
+                <div className="flex rounded-xl border bg-card p-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("all")}
+                    className={cn(
+                      "rounded-lg px-3 py-1.5 font-medium transition-colors",
+                      activeTab === "all"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {t("dashboard.allTab", "All")} ({myConsultations.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("active")}
+                    className={cn(
+                      "rounded-lg px-3 py-1.5 font-medium transition-colors",
+                      activeTab === "active"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {t("dashboard.activeTab", "Active")} ({activeConsultations.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("completed")}
+                    className={cn(
+                      "rounded-lg px-3 py-1.5 font-medium transition-colors",
+                      activeTab === "completed"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {t("dashboard.completedTab", "Completed")} ({completedConsultations.length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="live-history-search"
+                  className="ps-9 rounded-xl bg-card border text-xs sm:text-sm h-10"
+                  value={historySearch}
+                  onChange={(e) => setHistorySearch(e.target.value)}
+                  placeholder={t("dashboard.searchPlaceholder", "Search by patient name, phone, or symptoms...")}
+                />
+                {historySearch && (
+                  <button
+                    type="button"
+                    onClick={() => setHistorySearch("")}
+                    className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {filteredConsultations.length === 0 ? (
+              <Card className="p-8 text-center bg-card">
+                <p className="text-muted-foreground text-sm">
+                  {historySearch ? "No consultations match your search." : t("dashboard.noAssigned")}
+                </p>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {filteredConsultations.map((consultation) => (
+                  <Card key={consultation.id} className="p-5 bg-card hover:shadow-md transition-shadow">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10 border border-primary/20">
+                            <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+                              {(consultation.profiles?.full_name || "P").slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-semibold text-base">
+                                {consultation.profiles?.full_name || t("dashboard.patient")}
+                              </h4>
+                              {getStatusBadge(consultation.status)}
+                            </div>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                              <Phone className="h-3 w-3" />
+                              {consultation.profiles?.phone || t("dashboard.notProvided")}
+                            </p>
+                          </div>
+                        </div>
+
+                        {consultation.reason_category && (
+                          <div className="p-3 bg-muted/40 rounded-xl border border-border/50 text-xs space-y-1">
+                            <div className="font-semibold text-primary">
+                              {t("dashboard.reason")}: {t(`medicalReason.categories.${consultation.reason_category}`)}
+                            </div>
+                            {consultation.reason_description && (
+                              <p className="text-muted-foreground">
+                                {t("dashboard.symptoms")}: {consultation.reason_description}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                          <span>
+                            {t("dashboard.payment")}: {consultation.payment_amount} AED
+                          </span>
+                          {consultation.payment_status === "pending" && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {t("payment.unpaid")}
+                            </Badge>
+                          )}
+                          <span>•</span>
+                          <span>
+                            {new Date(consultation.created_at).toLocaleString([], {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex sm:flex-col gap-2 shrink-0 sm:items-end border-t sm:border-t-0 pt-3 sm:pt-0">
+                        {["claimed", "in_progress"].includes(consultation.status) && (
+                          <Button
+                            onClick={() => startVideo(consultation.id)}
+                            className="w-full gap-2 shadow-sm font-semibold"
+                          >
+                            <Video className="h-4 w-4" />
+                            {consultation.status === "in_progress"
+                              ? t("dashboard.rejoinVideo")
+                              : t("dashboard.startVideo")}
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full gap-1.5 text-xs"
+                          onClick={() => setJournalId(consultation.id)}
+                        >
+                          <BookOpen className="h-3.5 w-3.5 text-primary" />
+                          Patient journal
+                        </Button>
+                        <VisitSummaryDialog
+                          consultationId={consultation.id}
+                          initialNotes={(consultation as any).notes}
+                          initialSummary={(consultation as any).visit_summary}
+                          onSaved={() => loadConsultations()}
+                        />
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* Patient Journal Modal Dialog */}
+      <Dialog
+        open={!!journalId}
+        onOpenChange={(open) => {
+          if (!open) setJournalId(null);
+        }}
+      >
+        <DialogContent
+          className="w-[calc(100%-2rem)] max-w-xl max-h-[90vh] overflow-y-auto"
+          aria-describedby={undefined}
+        >
+          <DialogHeader>
+            <DialogTitle>Patient medical journal</DialogTitle>
+          </DialogHeader>
+          {journalId && (
+            <PatientJournal
+              key={journalId}
+              consultationId={journalId}
+              canAdd={consultations.some(
+                (c) => c.id === journalId && ["claimed", "in_progress", "completed"].includes(c.status),
+              )}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -69,15 +69,22 @@ const AdminDashboard = () => {
       const { error } = await supabase.from("profiles").update(updated).eq("id", editing.id);
       if (error) throw error;
       // Read back through the audited admin path before reporting success.
-      const { data, error: readError } = await supabase.rpc("list_admin_profiles").select("id, full_name, email, phone");
+      const { data, error: readError } = await supabase
+        .rpc("list_admin_profiles")
+        .select("id, full_name, email, phone");
       if (readError) throw readError;
       const saved = data?.find((profile) => profile.id === editing.id);
-      if (!saved || saved.full_name !== updated.full_name || saved.phone !== updated.phone) throw new Error("Profile update was not confirmed.");
+      if (!saved || saved.full_name !== updated.full_name || saved.phone !== updated.phone)
+        throw new Error("Profile update was not confirmed.");
       setProfiles(data ?? []);
       setEditing(null);
       toast({ title: "Profile updated" });
     } catch (error) {
-      toast({ title: "Could not save profile", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
+      toast({
+        title: "Could not save profile",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -85,7 +92,9 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const verifyAdmin = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       if (!user) {
         navigate("/auth");
@@ -123,9 +132,7 @@ const AdminDashboard = () => {
     const [profilesRes, rolesRes, doctorsRes] = await Promise.all([
       supabase.rpc("list_admin_profiles").select("id, full_name, email, phone"),
       supabase.from("user_roles").select("user_id, role"),
-      supabase
-        .from("doctor_profiles")
-        .select("id, user_id, license_number, specialization, is_verified"),
+      supabase.from("doctor_profiles").select("id, user_id, license_number, specialization, is_verified"),
     ]);
 
     if (profilesRes.error || rolesRes.error) {
@@ -146,7 +153,12 @@ const AdminDashboard = () => {
 
   const removeFromCalls = async (doctorId: string) => {
     const { error } = await supabase.functions.invoke("revoke-call-access", { body: { doctorId } });
-    if (error) toast({ title: "Could not end active calls", description: "Access was removed, but the doctor may still be in a call. Try again.", variant: "destructive" });
+    if (error)
+      toast({
+        title: "Could not end active calls",
+        description: "Access was removed, but the doctor may still be in a call. Try again.",
+        variant: "destructive",
+      });
   };
 
   const toggleRole = async (userId: string, role: AppRole, hasRole: boolean) => {
@@ -174,21 +186,26 @@ const AdminDashboard = () => {
     const key = `verify-${doctor.id}`;
     setBusyKey(key);
 
-    const { error } = await supabase
-      .from("doctor_profiles")
-      .update({ is_verified: !doctor.is_verified })
-      .eq("id", doctor.id);
+    const willVerify = !doctor.is_verified;
+    const { error } = await supabase.from("doctor_profiles").update({ is_verified: willVerify }).eq("id", doctor.id);
 
     if (error) {
       toast({ title: "Update failed", description: error.message, variant: "destructive" });
     } else {
+      // Sync the user_roles table with doctor role
+      if (willVerify) {
+        await supabase.from("user_roles").insert({ user_id: doctor.user_id, role: "doctor" });
+      } else {
+        await supabase.from("user_roles").delete().eq("user_id", doctor.user_id).eq("role", "doctor");
+      }
+
       toast({
-        title: doctor.is_verified ? "Verification removed" : "Doctor verified",
-        description: doctor.is_verified
-          ? "The doctor no longer has dashboard access."
-          : "The doctor role was granted automatically.",
+        title: willVerify ? "Doctor verified" : "Verification removed",
+        description: willVerify
+          ? "Doctor verified and granted doctor portal access."
+          : "Verification and doctor role removed. The user no longer has dashboard access.",
       });
-      if (doctor.is_verified) await removeFromCalls(doctor.user_id);
+      if (!willVerify) await removeFromCalls(doctor.user_id);
       await loadData();
     }
     setBusyKey(null);
@@ -222,7 +239,10 @@ const AdminDashboard = () => {
       if (error || payload?.error) {
         toast({
           title: payload?.code === "EMAIL_ALREADY_REGISTERED" ? "Account already exists" : "Could not create doctor",
-          description: typeof payload?.error === "string" ? payload.error : error?.message ?? "Please check the details and try again.",
+          description:
+            typeof payload?.error === "string"
+              ? payload.error
+              : (error?.message ?? "Please check the details and try again."),
           variant: "destructive",
         });
         return;
@@ -257,14 +277,16 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/80 backdrop-blur">
+      <header className="border-b border-border bg-card">
         <div className="container mx-auto flex flex-wrap items-center justify-between gap-3 px-4 py-4">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-primary" />
             <h1 className="text-lg font-semibold">DocNow Admin</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate("/")}>Back to site</Button>
+            <Button variant="outline" size="sm" onClick={() => navigate("/")}>
+              Back to site
+            </Button>
             <Button variant="outline" size="sm" disabled={signingOut} onClick={() => void signOut()}>
               {signingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
               Log out
@@ -326,7 +348,8 @@ const AdminDashboard = () => {
 
                     <div className="flex flex-wrap gap-2">
                       <Button size="sm" variant="outline" onClick={() => setEditing({ ...profile })}>
-                        <Pencil className="mr-2 h-3 w-3" />Edit profile
+                        <Pencil className="mr-2 h-3 w-3" />
+                        Edit profile
                       </Button>
                       {ALL_ROLES.map((role) => {
                         const hasRole = userRoles.includes(role);
@@ -339,9 +362,7 @@ const AdminDashboard = () => {
                             disabled={isSelf || busyKey === key}
                             onClick={() => toggleRole(profile.id, role, hasRole)}
                           >
-                            {busyKey === key && (
-                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                            )}
+                            {busyKey === key && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
                             {hasRole ? `Remove ${role}` : `Grant ${role}`}
                           </Button>
                         );
@@ -370,28 +391,51 @@ const AdminDashboard = () => {
             <form onSubmit={createDoctor} className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="d-name">Full name</Label>
-                <Input id="d-name" required value={newDoctor.full_name}
-                  onChange={(e) => setNewDoctor({ ...newDoctor, full_name: e.target.value })} />
+                <Input
+                  id="d-name"
+                  required
+                  value={newDoctor.full_name}
+                  onChange={(e) => setNewDoctor({ ...newDoctor, full_name: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="d-email">Email</Label>
-                <Input id="d-email" type="email" required value={newDoctor.email}
-                  onChange={(e) => setNewDoctor({ ...newDoctor, email: e.target.value })} />
+                <Input
+                  id="d-email"
+                  type="email"
+                  required
+                  value={newDoctor.email}
+                  onChange={(e) => setNewDoctor({ ...newDoctor, email: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="d-license">DHA licence number</Label>
-                <Input id="d-license" required value={newDoctor.license_number}
-                  onChange={(e) => setNewDoctor({ ...newDoctor, license_number: e.target.value })} />
+                <Input
+                  id="d-license"
+                  required
+                  value={newDoctor.license_number}
+                  onChange={(e) => setNewDoctor({ ...newDoctor, license_number: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="d-spec">Specialisation</Label>
-                <Input id="d-spec" required value={newDoctor.specialization}
-                  onChange={(e) => setNewDoctor({ ...newDoctor, specialization: e.target.value })} />
+                <Input
+                  id="d-spec"
+                  required
+                  value={newDoctor.specialization}
+                  onChange={(e) => setNewDoctor({ ...newDoctor, specialization: e.target.value })}
+                />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="d-pass">Temporary password</Label>
-                <Input id="d-pass" type="password" required minLength={10} value={newDoctor.password}
-                  onChange={(e) => setNewDoctor({ ...newDoctor, password: e.target.value })} />
+                <Input
+                  id="d-pass"
+                  type="password"
+                  required
+                  minLength={10}
+                  value={newDoctor.password}
+                  onChange={(e) => setNewDoctor({ ...newDoctor, password: e.target.value })}
+                />
                 <p className="text-xs text-muted-foreground">
                   At least 10 characters. Share it with the doctor securely; they can change it with "Forgot password?".
                 </p>
@@ -415,9 +459,7 @@ const AdminDashboard = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             {doctorProfiles.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                No doctor applications yet.
-              </p>
+              <p className="py-6 text-center text-sm text-muted-foreground">No doctor applications yet.</p>
             ) : (
               doctorProfiles.map((doctor) => {
                 const profile = profiles.find((p) => p.id === doctor.user_id);
@@ -428,16 +470,11 @@ const AdminDashboard = () => {
                     className="flex flex-col gap-3 rounded-lg border border-border p-4 md:flex-row md:items-center md:justify-between"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-medium">
-                        {profile?.full_name || doctor.user_id}
-                      </p>
+                      <p className="truncate font-medium">{profile?.full_name || doctor.user_id}</p>
                       <p className="truncate text-sm text-muted-foreground">
                         {doctor.specialization} · License {doctor.license_number}
                       </p>
-                      <Badge
-                        className="mt-2"
-                        variant={doctor.is_verified ? "secondary" : "outline"}
-                      >
+                      <Badge className="mt-2" variant={doctor.is_verified ? "secondary" : "outline"}>
                         {doctor.is_verified ? "verified" : "pending"}
                       </Badge>
                     </div>
@@ -457,29 +494,55 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
       </main>
-      <Dialog open={editing !== null} onOpenChange={(open) => { if (!open && !saving) setEditing(null); }}>
+      <Dialog
+        open={editing !== null}
+        onOpenChange={(open) => {
+          if (!open && !saving) setEditing(null);
+        }}
+      >
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Edit profile</DialogTitle></DialogHeader>
-          {editing && <form onSubmit={saveProfile} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Full name</Label>
-              <Input id="edit-name" required maxLength={120} disabled={saving} value={editing.full_name} onChange={(event) => setEditing({ ...editing, full_name: event.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-phone">Phone</Label>
-              <Input id="edit-phone" type="tel" maxLength={32} disabled={saving} value={editing.phone ?? ""} onChange={(event) => setEditing({ ...editing, phone: event.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-email">Account email</Label>
-              <Input id="edit-email" type="email" value={editing.email} disabled />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" disabled={saving} onClick={() => setEditing(null)}>Cancel</Button>
-              <Button type="submit" disabled={saving || !editing.full_name.trim()}>
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save changes
-              </Button>
-            </div>
-          </form>}
+          <DialogHeader>
+            <DialogTitle>Edit profile</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <form onSubmit={saveProfile} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Full name</Label>
+                <Input
+                  id="edit-name"
+                  required
+                  maxLength={120}
+                  disabled={saving}
+                  value={editing.full_name}
+                  onChange={(event) => setEditing({ ...editing, full_name: event.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-phone">Phone</Label>
+                <Input
+                  id="edit-phone"
+                  type="tel"
+                  maxLength={32}
+                  disabled={saving}
+                  value={editing.phone ?? ""}
+                  onChange={(event) => setEditing({ ...editing, phone: event.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Account email</Label>
+                <Input id="edit-email" type="email" value={editing.email} disabled />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" disabled={saving} onClick={() => setEditing(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={saving || !editing.full_name.trim()}>
+                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save
+                  changes
+                </Button>
+              </div>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>

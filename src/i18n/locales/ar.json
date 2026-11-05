@@ -6,7 +6,17 @@
     "patientLogin": "أنا مريض",
     "doctorLogin": "أنا طبيب",
     "logout": "تسجيل الخروج",
-    "doctors": "أطباء DocNow"
+    "doctors": "أطباء DocNow",
+    "myVisits": "زياراتي",
+    "doctorDashboard": "بوابة الأطباء",
+    "adminPortal": "لوحة الإدارة"
+  },
+  "visits": {
+    "tabVisits": "الاستشارات والزيارات",
+    "tabJournal": "سجلي الطبي الشخصي",
+    "allRecords": "جميع سجلاتي الشخصية",
+    "filterByVisit": "تصفية حسب الزيارة:",
+    "showAll": "عرض جميع سجلاتي الشخصية"
   },
   "hero": {
     "title": "قابل الأطباء مباشرة عبر الفيديو",
@@ -97,13 +107,31 @@
     "takeConsultation": "قبول الاستشارة",
     "assigning": "جاري التعيين...",
     "startVideo": "بدء الفيديو",
+    "rejoinVideo": "العودة إلى مكالمة الفيديو",
     "consultationAssigned": "تم تعيين الاستشارة",
     "canStartVideo": "يمكنك الآن بدء مكالمة الفيديو",
     "couldNotAssign": "تعذر تعيين الاستشارة",
     "startingVideo": "جاري بدء مكالمة الفيديو",
     "videoComingSoon": "وظيفة الفيديو قريبًا",
     "couldNotLoad": "تعذر تحميل الاستشارات",
-    "loading": "جاري التحميل..."
+    "loading": "جاري التحميل...",
+    "onlineStatus": "متصل ومتاح",
+    "inQueue": "في الانتظار",
+    "inProgress": "قيد التنفيذ",
+    "completed": "مكتملة",
+    "totalVisits": "إجمالي الاستشارات",
+    "allTab": "الكل",
+    "activeTab": "نشطة",
+    "completedTab": "مكتملة",
+    "queueClear": "قائمة الانتظار فارغة",
+    "queueClearDesc": "لا يوجد مرضى في الانتظار حالياً. ستتلقى تنبيهاً فورياً عند انضمام مريض جديد.",
+    "clinicalTools": "الأدوات السريرية والامتثال",
+    "emergencyProtocol": "بروتوكول الطوارئ",
+    "emergencyNotice": "للحالات الطارئة الحرجة، وجّه المريض فوراً للاتصال بالرقم 998 (الإسعاف) أو 999.",
+    "prescriptionsNotice": "لوائح الرعاية عن بُعد: لا يمكن وصف الأدوية الخاضعة للرقابة عبر الفيديو.",
+    "systemReady": "نظام غرفة الاستشارة",
+    "devicesReady": "الصوت والفيديو جاهزان",
+    "searchPlaceholder": "ابحث باسم المريض أو الهاتف أو الأعراض..."
   },
   "registration": {
     "title": "بيانات المريض",
