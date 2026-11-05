@@ -7,7 +7,8 @@
 - Patient sample profile, ratings, follow-ups, and visit documents stay in memory; PDF/QR output is explicitly non-clinical and never a real pharmacy verification or insurance claim.
 - Call text uses bounded Daily app messages; file bytes use a size/type-validated direct WebRTC data channel, never public storage, with no persistence and explicit network-failure feedback.
 - Live staff record reads use POST RPCs with transactional auditing; database permissions enforce verified-doctor assignment or admin access, and clinical writes retain caller identity for audit triggers.
-- Original routes require validated real account access through the shared account provider; server-side roles and doctor verification remain the authorization boundary.
+- Record and waiting-room routes require validated real account access through the shared account provider; public intake collects only an in-memory draft, and server-side roles and doctor verification remain the authorization boundary.
+- Booking intake and consent drafts stay in a shared memory-only provider, never browser storage or logs; drafts are validated before any future authenticated server submission and cleared on account changes. Approved booking return paths preserve sign-in continuity without external redirects.
 - Mock mode stays disabled, and retired test-queue RPCs and demo-call credentials remain inaccessible to app visitors.
 - Doctor applications use an authenticated bounded RPC, remain unverified with no doctor privileges until admin approval, and protect identity and licence details from self-editing.
 - Admin doctor creation treats duplicate emails as conflicts, never overwriting passwords or promoting existing accounts; existing accounts follow explicit application approval to prevent accidental account takeover.

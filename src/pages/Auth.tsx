@@ -10,12 +10,15 @@ import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAccount } from "@/components/AccountProvider";
 import { accountDestination } from "@/lib/account-access";
+import { bookingReturnPath } from "@/lib/booking-intake";
 
 const Auth = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isPatient = searchParams.get("as") !== "doctor";
   const signingUp = searchParams.get("mode") === "signup";
+  const returnTo = bookingReturnPath(searchParams.get("returnTo"));
+  const updateParams = (values: Record<string, string>) => setSearchParams({ ...values, ...(returnTo ? { returnTo } : {}) });
   const { user, access, loading: checking } = useAccount();
   const [fullName, setFullName] = useState("");
   const [sent, setSent] = useState(false);
@@ -27,8 +30,8 @@ const Auth = () => {
 
   useEffect(() => {
     if (checking || !user || !access) return;
-    navigate(!isPatient && access === "patient" ? "/doctor/register" : accountDestination(access), { replace: true });
-  }, [user, access, checking, navigate, isPatient]);
+    navigate(isPatient && access === "patient" && returnTo ? returnTo : !isPatient && access === "patient" ? "/doctor/register" : accountDestination(access), { replace: true });
+  }, [user, access, checking, navigate, isPatient, returnTo]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +40,7 @@ const Auth = () => {
     try {
       if (signingUp) {
         const { data, error } = await supabase.auth.signUp({ email: email.trim(), password,
-          options: { emailRedirectTo: `${window.location.origin}/auth?as=${isPatient ? "patient" : "doctor"}`, data: { full_name: fullName.trim() } } });
+          options: { emailRedirectTo: `${window.location.origin}/auth?as=${isPatient ? "patient" : "doctor"}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`, data: { full_name: fullName.trim() } } });
         if (error) throw error;
         setPassword("");
         if (!data.session) { setSent(true); return; }
@@ -87,7 +90,7 @@ const Auth = () => {
 
           <div className="bg-card p-8 rounded-xl border shadow-sm">
 
-            {sent ? <div className="space-y-4"><p role="status">Check your email to confirm your account before signing in.</p><Button variant="outline" onClick={() => { setSent(false); setSearchParams({ as: isPatient ? "patient" : "doctor" }); }}>Back to sign in</Button></div> : <form onSubmit={handleLogin} className="space-y-4">
+            {sent ? <div className="space-y-4"><p role="status">Check your email to confirm your account before signing in.</p><Button variant="outline" onClick={() => { setSent(false); updateParams({ as: isPatient ? "patient" : "doctor" }); }}>Back to sign in</Button></div> : <form onSubmit={handleLogin} className="space-y-4">
               {signingUp && <div className="space-y-2"><Label htmlFor="signup-name">Full name</Label><Input id="signup-name" required minLength={2} maxLength={120} value={fullName} onChange={e => setFullName(e.target.value)} /></div>}
               <div className="space-y-2">
                 <Label htmlFor="login-email">{t('auth.email')}</Label>
@@ -137,7 +140,7 @@ const Auth = () => {
                   Doctor accounts require administrator licence approval.
                 </p>
               )}
-              <Button type="button" variant="link" className="w-full" onClick={() => setSearchParams({ as: isPatient ? "patient" : "doctor", mode: signingUp ? "login" : "signup" })}>{signingUp ? "Already have an account? Sign in" : "Create an account"}</Button>
+              <Button type="button" variant="link" className="w-full" onClick={() => updateParams({ as: isPatient ? "patient" : "doctor", mode: signingUp ? "login" : "signup" })}>{signingUp ? "Already have an account? Sign in" : "Create an account"}</Button>
             </form>}
           </div>
 

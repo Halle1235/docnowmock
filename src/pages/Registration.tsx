@@ -8,10 +8,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccount } from "@/components/AccountProvider";
+import { useBookingDraft } from "@/components/BookingDraftProvider";
+import { intakeSchema } from "@/lib/booking-intake";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import * as CountryFlags from "country-flag-icons/react/3x2";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { bookingCountries, defaultBookingCountry, formatBookingPhone, getCountryCallingCode, splitBookingPhone, type CountryCode } from "@/lib/booking-phone";
+import { bookingCountries, defaultBookingCountry, getCountryCallingCode, splitBookingPhone, type CountryCode } from "@/lib/booking-phone";
 
 const CountryFlag = ({ country }: { country: CountryCode }) => {
   const Flag = CountryFlags[country as keyof typeof CountryFlags];
@@ -20,50 +23,42 @@ const CountryFlag = ({ country }: { country: CountryCode }) => {
 
 const Registration = () => {
   const navigate = useNavigate();
-  const { user } = useAccount();
-  const [saving, setSaving] = useState(false);
+  const { user, access } = useAccount();
+  const { intake, setIntake } = useBookingDraft();
+  const [identityType, setIdentityType] = useState<"resident" | "visitor">(intake?.identity.type ?? "resident");
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
-  const [passportNumber, setPassportNumber] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [phoneCountry, setPhoneCountry] = useState<CountryCode>(defaultBookingCountry);
+  const [passportNumber, setPassportNumber] = useState(intake?.identity.number ?? "");
+  const [fullName, setFullName] = useState(intake?.fullName ?? "");
+  const [dateOfBirth, setDateOfBirth] = useState(intake?.dateOfBirth ?? "");
+  const [email, setEmail] = useState(intake?.email ?? "");
+  const [phone, setPhone] = useState(intake?.phone ?? "");
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>(intake?.country ?? defaultBookingCountry);
   const countryNames = new Intl.DisplayNames([i18n.language], { type: "region" });
   const countries = [...bookingCountries].sort((a, b) => (countryNames.of(a) ?? a).localeCompare(countryNames.of(b) ?? b, i18n.language));
 
   useEffect(() => {
-    if (!user) return;
+    if (intake || !user || access !== "patient") return;
     setEmail(user.email || "");
+    let active = true;
     supabase.from("profiles").select("full_name, phone, passport_number, date_of_birth").eq("id", user.id).maybeSingle().then(({ data }) => {
-      if (!data) return;
+      if (!active || !data) return;
       const contact = splitBookingPhone(data.phone || "");
-      setFullName(data.full_name); setPhone(contact.national); setPhoneCountry(contact.country); setPassportNumber(data.passport_number || ""); setDateOfBirth(data.date_of_birth || "");
+      setFullName(data.full_name); setPhone(contact.national); setPhoneCountry(contact.country);
+      const identity = data.passport_number || "";
+      setPassportNumber(identity); setIdentityType(/^784-/.test(identity) ? "resident" : identity ? "visitor" : "resident");
+      setDateOfBirth(/^\d{4}-\d{2}-\d{2}$/.test(data.date_of_birth || "") ? data.date_of_birth || "" : "");
     });
-  }, [user]);
-  const handleSubmit = async (e: React.FormEvent) => {
+    return () => { active = false; };
+  }, [user?.id, access, intake]);
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!passportNumber || !fullName || !dateOfBirth || !email || !phone) {
-      toast({
-        title: t('registration.fillAllFields'),
-        description: t('registration.allInfoRequired'),
-        variant: "destructive",
-      });
+    const result = intakeSchema.safeParse({ fullName, email, phone, country: phoneCountry, dateOfBirth, identity: { type: identityType, number: passportNumber } });
+    if (!result.success) {
+      toast({ title: t('registration.fillAllFields'), description: result.error.issues[0]?.message, variant: "destructive" });
       return;
     }
-
-    const internationalPhone = formatBookingPhone(phone, phoneCountry);
-    if (!internationalPhone) {
-      toast({ title: t('registration.invalidPhone'), description: t('registration.phoneHelper'), variant: "destructive" });
-      return;
-    }
-    if (!user) return;
-    setSaving(true);
-    const { error } = await supabase.from("profiles").update({ full_name: fullName.trim(), phone: internationalPhone, passport_number: passportNumber.trim(), date_of_birth: dateOfBirth }).eq("id", user.id);
-    setSaving(false);
-    if (error) { toast({ title: "Could not save details", description: error.message, variant: "destructive" }); return; }
+    setIntake(result.data);
     navigate("/medical-reason");
   };
 
@@ -111,11 +106,13 @@ const Registration = () => {
             </div>
           </aside>
 
-          <div className="bg-card p-5 sm:p-8 rounded-xl border shadow-sm">
+          <div className="py-2">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="fullName">{t('registration.fullName')} *</Label>
                 <Input
+                  maxLength={120}
+                  autoComplete="name"
                   id="fullName"
                   type="text"
                   placeholder={t('registration.fullNamePlaceholder')}
@@ -127,11 +124,13 @@ const Registration = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="dateOfBirth">{t('registration.personalNumber')} *</Label>
+                <Label htmlFor="dateOfBirth">{t('registration.dateOfBirth')} *</Label>
                 <Input
                   id="dateOfBirth"
-                  type="text"
-                  placeholder={t('registration.personalNumberPlaceholder')}
+                  type="date"
+                  autoComplete="bday"
+                  min="1900-01-01"
+                  max={new Date().toISOString().slice(0, 10)}
                   value={dateOfBirth}
                   onChange={(e) => setDateOfBirth(e.target.value)}
                   required
@@ -140,11 +139,18 @@ const Registration = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="passport">{t('registration.passportNumber')} *</Label>
+                <Label>{t('registration.identification')} *</Label>
+                <ToggleGroup type="single" value={identityType} onValueChange={value => { if (value === "resident" || value === "visitor") { setIdentityType(value); setPassportNumber(""); } }} variant="outline" className="grid grid-cols-2 gap-2">
+                  <ToggleGroupItem value="resident" className="h-auto min-h-12 whitespace-normal py-2">{t('registration.resident')}</ToggleGroupItem>
+                  <ToggleGroupItem value="visitor" className="h-auto min-h-12 whitespace-normal py-2">{t('registration.visitor')}</ToggleGroupItem>
+                </ToggleGroup>
+                <Label htmlFor="passport">{t(identityType === "resident" ? 'registration.emiratesId' : 'registration.passportNumber')} *</Label>
                 <Input
                   id="passport"
                   type="text"
-                  placeholder={t('registration.passportPlaceholder')}
+                  maxLength={identityType === "resident" ? 18 : 32}
+                  dir="ltr"
+                  placeholder={identityType === "resident" ? "784-XXXX-XXXXXXX-X" : t('registration.passportPlaceholder')}
                   value={passportNumber}
                   onChange={(e) => setPassportNumber(e.target.value)}
                   required
@@ -158,7 +164,8 @@ const Registration = () => {
               <div className="space-y-2">
                 <Label htmlFor="email">{t('registration.email')} *</Label>
                 <Input
-                  readOnly
+                  maxLength={255}
+                  autoComplete="email"
                   id="email"
                   type="email"
                   placeholder={t('registration.emailPlaceholder')}
@@ -204,7 +211,7 @@ const Registration = () => {
                 </p>
               </div>
 
-              <Button disabled={saving} type="submit" className="w-full h-12 text-base" size="lg">
+              <Button type="submit" className="w-full h-12 text-base" size="lg">
                 {t('registration.continueButton')}
               </Button>
             </form>
