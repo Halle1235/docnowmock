@@ -88,18 +88,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
     void refresh(false);
 
-    const focus = () => {
-      // Background check without resetting loading state or unmounting the screen
-      void refresh(true);
-    };
-
-    window.addEventListener("focus", focus);
-    const timer = window.setInterval(focus, 60000);
-
     return () => {
       subscription.unsubscribe();
-      window.removeEventListener("focus", focus);
-      clearInterval(timer);
     };
   }, []);
 
