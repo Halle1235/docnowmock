@@ -46,6 +46,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       }
       if (error) throw error;
 
+      // Ensure profile and role are provisioned for new signups
+      void supabase.rpc("ensure_default_patient_account");
+
       const [roles, doctor] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", user.id),
         supabase.from("doctor_profiles").select("is_verified").eq("user_id", user.id).maybeSingle(),
