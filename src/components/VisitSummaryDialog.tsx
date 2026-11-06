@@ -1,3 +1,4 @@
+import type { Json } from "@/integrations/supabase/types";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -170,7 +171,7 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
         .from("consultations")
         .update({
           notes: notes.trim(),
-          visit_summary: summaryObj,
+          visit_summary: summaryObj as unknown as Json,
           visit_summary_approved_at: new Date().toISOString(),
           visit_summary_approved_by: user.id,
         })
