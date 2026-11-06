@@ -716,6 +716,7 @@ const VideoCall = () => {
             {joinedCall ? (
               <CallChat
                 call={joinedCall}
+                sample={false}
                 variant="room"
                 onIncoming={() => {
                   if (panelRef.current !== "chat") setUnread((n) => n + 1);
