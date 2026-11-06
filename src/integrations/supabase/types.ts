@@ -145,6 +145,8 @@ export type Database = {
           is_available: boolean | null
           is_verified: boolean | null
           license_number: string
+          rejected_at: string | null
+          rejection_reason: string | null
           specialization: string
           updated_at: string | null
           user_id: string
@@ -156,6 +158,8 @@ export type Database = {
           is_available?: boolean | null
           is_verified?: boolean | null
           license_number: string
+          rejected_at?: string | null
+          rejection_reason?: string | null
           specialization: string
           updated_at?: string | null
           user_id: string
@@ -167,6 +171,8 @@ export type Database = {
           is_available?: boolean | null
           is_verified?: boolean | null
           license_number?: string
+          rejected_at?: string | null
+          rejection_reason?: string | null
           specialization?: string
           updated_at?: string | null
           user_id?: string
@@ -389,6 +395,10 @@ export type Database = {
         Args: { _name: string; _reason: string }
         Returns: string
       }
+      dismiss_doctor_application: {
+        Args: { _doctor_id: string }
+        Returns: undefined
+      }
       ensure_default_patient_account: { Args: never; Returns: undefined }
       get_authorized_call_record: {
         Args: { _consultation_id: string }
@@ -441,6 +451,15 @@ export type Database = {
         Returns: Json
       }
       list_test_bookings: { Args: never; Returns: Json }
+      reject_doctor_application: {
+        Args: { _doctor_id: string; _reason: string }
+        Returns: undefined
+      }
+      set_doctor_availability: {
+        Args: { _doctor_id: string; _is_available: boolean }
+        Returns: undefined
+      }
+      withdraw_doctor_application: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "patient" | "doctor" | "admin"
