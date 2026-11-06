@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ShieldCheck } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useBookingDraft } from "@/components/BookingDraftProvider";
 import { reasonSchema } from "@/lib/booking-intake";
@@ -16,7 +16,9 @@ const MedicalReason = () => {
   const { intake, reason, setReason } = useBookingDraft();
   const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState<string>(reason?.category ?? "");
-  const [description, setDescription] = useState(reason?.description ?? "");
+  const [description, setDescription] = useState(reason?.rawDescription ?? reason?.description ?? "");
+  const [takingMedication, setTakingMedication] = useState<boolean>(reason?.takingMedication ?? false);
+  const [medications, setMedications] = useState<string>(reason?.medications ?? "");
   const [ackEmergency, setAckEmergency] = useState(reason?.emergency ?? false);
   const [ackTelehealth, setAckTelehealth] = useState(reason?.telehealth ?? false);
   const [ackPrivacy, setAckPrivacy] = useState(reason?.privacy ?? false);
@@ -47,17 +49,31 @@ const MedicalReason = () => {
       return;
     }
 
+    if (takingMedication && !medications.trim()) {
+      toast.error(t("medicalReason.medicationsRequired"));
+      return;
+    }
+
     if (!ackEmergency || !ackTelehealth || !ackPrivacy) {
       toast.error(t("medicalReason.consentRequired"));
       return;
     }
+
+    const trimmedRaw = description.trim();
+    const trimmedMeds = takingMedication ? medications.trim() : "";
+    const combinedDescription = trimmedMeds ? `${trimmedRaw}\n\nCurrent medications: ${trimmedMeds}` : trimmedRaw;
+
     const result = reasonSchema.safeParse({
       category: selectedCategory,
-      description,
+      description: combinedDescription,
+      rawDescription: trimmedRaw,
+      takingMedication,
+      medications: trimmedMeds,
       emergency: ackEmergency,
       telehealth: ackTelehealth,
       privacy: ackPrivacy,
     });
+
     if (!result.success) {
       toast.error(t("medicalReason.invalidDescription"));
       return;
@@ -93,6 +109,15 @@ const MedicalReason = () => {
                 <p className="text-sm text-foreground">{t("medicalReason.emergencyText")}</p>
               </div>
             </div>
+
+            <div className="flex gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-foreground">
+              <ShieldCheck className="h-5 w-5 shrink-0 text-primary mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-semibold text-primary">{t("medicalReason.confidentialityTitle")}</p>
+                <p className="text-sm text-muted-foreground">{t("medicalReason.confidentialityText")}</p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {categories.map((category) => (
                 <Button
@@ -107,16 +132,56 @@ const MedicalReason = () => {
             </div>
 
             {selectedCategory && (
-              <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                <Label htmlFor="description">{t("medicalReason.descriptionLabel")}</Label>
-                <Textarea
-                  maxLength={2000}
-                  id="description"
-                  placeholder={t("medicalReason.descriptionPlaceholder")}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="min-h-[150px]"
-                />
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                <div className="space-y-2">
+                  <Label htmlFor="description">{t("medicalReason.descriptionLabel")}</Label>
+                  <Textarea
+                    maxLength={1500}
+                    id="description"
+                    placeholder={t("medicalReason.descriptionPlaceholder")}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="min-h-[140px]"
+                  />
+                </div>
+
+                <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="taking-medication"
+                      checked={takingMedication}
+                      onCheckedChange={(checked) => {
+                        const isChecked = checked === true;
+                        setTakingMedication(isChecked);
+                        if (!isChecked) setMedications("");
+                      }}
+                      className="mt-0.5"
+                    />
+                    <div className="space-y-0.5">
+                      <Label htmlFor="taking-medication" className="text-sm font-medium cursor-pointer">
+                        {t("medicalReason.takingMedicationLabel")}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">{t("medicalReason.takingMedicationHint")}</p>
+                    </div>
+                  </div>
+
+                  {takingMedication && (
+                    <div className="pt-2 space-y-2 border-t border-border/60 animate-in fade-in slide-in-from-top-1">
+                      <Label htmlFor="medications-text" className="text-sm font-medium">
+                        {t("medicalReason.medicationsTextLabel")} *
+                      </Label>
+                      <Textarea
+                        id="medications-text"
+                        maxLength={500}
+                        placeholder={t("medicalReason.medicationsPlaceholder")}
+                        value={medications}
+                        onChange={(e) => setMedications(e.target.value)}
+                        className="min-h-[80px]"
+                        aria-required="true"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
