@@ -79,7 +79,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       if (event === "SIGNED_OUT") {
         setState({ user: null, access: null, loading: false, error: "" });
       } else if (event === "SIGNED_IN") {
-        void refresh(false);
+        // Also fires on tab refocus; keep an existing session mounted if the check fails
+        void refresh(true);
       } else {
         // TOKEN_REFRESHED, USER_UPDATED, etc. happen silently in the background
         void refresh(true);
