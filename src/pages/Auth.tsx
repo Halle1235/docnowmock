@@ -52,9 +52,9 @@ const Auth = () => {
       return;
     }
 
-    // If a patient enters their login on the doctor portal, log them in and immediately redirect to patient portal
+    // Accounts without a doctor application continue to the licence form; the server rejects existing patients
     if (access === "patient") {
-      navigate(returnTo || "/my-visits", { replace: true });
+      navigate("/doctor/register", { replace: true });
       return;
     }
   }, [user, access, checking, navigate, isPatient, returnTo]);
