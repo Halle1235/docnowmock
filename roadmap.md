@@ -1,4 +1,5 @@
 # Tasks
+- [ ] Measure project running credits, database load, indexes and scheduled activity; implement verified high-impact optimizations without changing access rules or deleting data.
 - [x] Enable validated authenticated unpaid booking, immediate waiting-room redirect, unpaid labels, and serialized duplicate prevention; 30 tests pass, signed-in booking/readback/reload and mobile waiting room verified. Doctor-side acceptance not exercised in this patient session.
 - [x] Streamline homepage → public patient intake with identification toggle → signed-in medical reason and required consents → unavailable AED 249 checkout; memory-only drafts, safe sign-in return paths, 11 tests, signed-in flow, and mobile layout verified.
 - [ ] Activate trusted payment confirmation, immediate waiting-room handoff, and emailed rejoin links — deferred by user's intake-only choice; no payment provider connected. Insurance is explicitly unavailable until eligibility/pricing is supplied.
