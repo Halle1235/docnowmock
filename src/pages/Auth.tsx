@@ -120,7 +120,7 @@ const Auth = () => {
               {isPatient ? <User className="w-8 h-8 text-primary" /> : <Shield className="w-8 h-8 text-primary" />}
             </div>
             <h2 className="text-3xl font-bold mb-2">
-              {signingUp ? "Create account" : isPatient ? t("auth.patientTitle") : t("auth.title")}
+              {signingUp ? t("auth.create") : isPatient ? t("auth.patientTitle") : t("auth.title")}
             </h2>
             <p className="text-muted-foreground">{isPatient ? t("auth.patientSubtitle") : t("auth.subtitle")}</p>
           </div>
@@ -157,7 +157,7 @@ const Auth = () => {
             <div className="bg-card p-8 rounded-xl border shadow-sm">
               {sent ? (
                 <div className="space-y-4">
-                  <p role="status">Check your email to confirm your account before signing in.</p>
+                  <p role="status">{t("auth.confirmEmail")}</p>
                   <Button
                     variant="outline"
                     onClick={() => {
@@ -165,14 +165,14 @@ const Auth = () => {
                       updateParams({ as: isPatient ? "patient" : "doctor" });
                     }}
                   >
-                    Back to sign in
+                    {t("auth.backLogin")}
                   </Button>
                 </div>
               ) : (
                 <form onSubmit={handleLogin} className="space-y-4">
                   {signingUp && (
                     <div className="space-y-2">
-                      <Label htmlFor="signup-name">Full name</Label>
+                      <Label htmlFor="signup-name">{t("registration.fullName")}</Label>
                       <Input
                         id="signup-name"
                         required
@@ -212,7 +212,7 @@ const Auth = () => {
                   </div>
 
                   <Button type="submit" className="w-full h-12" disabled={loading}>
-                    {loading ? "Please wait…" : signingUp ? "Create account" : t("auth.loginButton")}
+                    {loading ? t("dashboard.loading") : signingUp ? t("auth.create") : t("auth.loginButton")}
                   </Button>
 
                   <div className="text-center">
@@ -222,13 +222,13 @@ const Auth = () => {
                       className="p-0 h-auto text-sm text-muted-foreground"
                       onClick={() => navigate("/reset-password")}
                     >
-                      Forgot password?
+                      {t("auth.forgot")}
                     </Button>
                   </div>
 
                   {!isPatient && (
                     <p className="text-center text-xs text-muted-foreground">
-                      Doctor accounts require administrator licence approval.
+                      {t("auth.approval")}
                     </p>
                   )}
                   <Button
@@ -239,7 +239,7 @@ const Auth = () => {
                       updateParams({ as: isPatient ? "patient" : "doctor", mode: signingUp ? "login" : "signup" })
                     }
                   >
-                    {signingUp ? "Already have an account? Sign in" : "Create an account"}
+                    {t(signingUp ? "auth.existing" : "auth.create")}
                   </Button>
                 </form>
               )}

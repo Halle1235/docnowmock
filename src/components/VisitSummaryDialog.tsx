@@ -16,6 +16,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CheckCircle, FileText, Loader2, Save } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export interface VisitSummary {
   overview: string;
@@ -27,7 +28,15 @@ export interface VisitSummary {
   follow_up: string;
 }
 
-export const SummaryView = ({ s }: { s: VisitSummary }) => {
+export const SummaryView = ({ s, onBookFollowUp }: { s: VisitSummary; onBookFollowUp?: () => void }) => {
+  const { t } = useTranslation();
+  const followUp = (
+    <div className={onBookFollowUp ? "space-y-2 rounded-md bg-card p-3" : undefined}>
+      <h4 className="font-semibold text-sm mb-1">{t("history.followUp")}</h4>
+      {s.follow_up && <p className="text-sm text-muted-foreground">{s.follow_up}</p>}
+      {onBookFollowUp && <Button variant="outline" onClick={onBookFollowUp}>{t("history.bookFollowUp")}</Button>}
+    </div>
+  );
   const List = ({ title, items }: { title: string; items: string[] }) =>
     items?.length ? (
       <div>
@@ -42,6 +51,7 @@ export const SummaryView = ({ s }: { s: VisitSummary }) => {
 
   return (
     <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+      {onBookFollowUp && followUp}
       {s.overview && (
         <div>
           <h4 className="font-semibold text-sm mb-1">Clinical Overview</h4>
@@ -70,12 +80,7 @@ export const SummaryView = ({ s }: { s: VisitSummary }) => {
       )}
       <List title="Self-care & Recommendations" items={s.self_care} />
       <List title="When to seek urgent care" items={s.warning_signs} />
-      {s.follow_up && (
-        <div>
-          <h4 className="font-semibold text-sm mb-1">Follow-up</h4>
-          <p className="text-sm text-muted-foreground">{s.follow_up}</p>
-        </div>
-      )}
+      {!onBookFollowUp && s.follow_up && followUp}
       <p className="text-[11px] text-muted-foreground pt-1 border-t border-border/50">
         Doctor-approved clinical consultation summary. In a medical emergency call 998.
       </p>

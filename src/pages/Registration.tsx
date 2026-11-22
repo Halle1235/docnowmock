@@ -12,6 +12,7 @@ import { useBookingDraft } from "@/components/BookingDraftProvider";
 import { intakeSchema } from "@/lib/booking-intake";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import BookingAvailability from "@/components/BookingAvailability";
 import * as CountryFlags from "country-flag-icons/react/3x2";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { bookingCountries, defaultBookingCountry, getCountryCallingCode, splitBookingPhone, type CountryCode } from "@/lib/booking-phone";
@@ -72,6 +73,7 @@ const Registration = () => {
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label={t("auth.backToHome")}
                 onClick={() => navigate("/")}
               >
                 <ArrowLeft className="h-5 w-5" />
@@ -95,6 +97,7 @@ const Registration = () => {
             </p>
           </div>
 
+          <BookingAvailability />
           <aside aria-labelledby="emergency-heading" className="mb-6 border-l-4 border-destructive bg-destructive/5 p-4">
             <div className="flex items-start gap-3">
               <TriangleAlert aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
@@ -217,9 +220,6 @@ const Registration = () => {
             </form>
           </div>
 
-          <p className="text-center text-sm text-muted-foreground mt-6">
-            {t('registration.termsNote')}
-          </p>
         </div>
       </div>
     </div>

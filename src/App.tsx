@@ -1,3 +1,4 @@
+import { routes } from "./lib/routes";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -30,20 +31,20 @@ const App = () => (
         <AccountProvider>
         <BookingDraftProvider>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/registration" element={<Registration />} />
-          <Route path="/medical-reason" element={<RequireAccount role="patient"><MedicalReason /></RequireAccount>} />
-          <Route path="/payment" element={<RequireAccount role="patient"><Payment /></RequireAccount>} />
-          <Route path="/waiting-room" element={<RequireAccount role="patient"><WaitingRoom /></RequireAccount>} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/doctor/login" element={<Navigate to="/auth?as=doctor" replace />} />
-          <Route path="/doctor/register" element={<DoctorRegistration />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/doctor-dashboard" element={<RequireAccount role="doctor"><DoctorDashboard /></RequireAccount>} />
-          <Route path="/call/:consultationId" element={<RequireAccount><VideoCall /></RequireAccount>} />
-          <Route path="/admin" element={<RequireAccount role="admin"><AdminDashboard /></RequireAccount>} />
-          <Route path="/admin-dashboard" element={<Navigate to="/admin" replace />} />
-          <Route path="/my-visits" element={<RequireAccount role="patient"><MyVisits /></RequireAccount>} />
+          <Route path={routes.home} element={<Index />} />
+          <Route path={routes.registration} element={<Registration />} />
+          <Route path={routes.medicalReason} element={<RequireAccount role="patient"><MedicalReason /></RequireAccount>} />
+          <Route path={routes.payment} element={<RequireAccount role="patient"><Payment /></RequireAccount>} />
+          <Route path={routes.waitingRoom} element={<RequireAccount role="patient"><WaitingRoom /></RequireAccount>} />
+          <Route path={routes.auth} element={<Auth />} />
+          <Route path={routes.doctorLogin} element={<Navigate to="/auth?as=doctor" replace />} />
+          <Route path={routes.doctorRegistration} element={<DoctorRegistration />} />
+          <Route path={routes.resetPassword} element={<ResetPassword />} />
+          <Route path={routes.doctorDashboard} element={<RequireAccount role="doctor"><DoctorDashboard /></RequireAccount>} />
+          <Route path={routes.call} element={<RequireAccount><VideoCall /></RequireAccount>} />
+          <Route path={routes.admin} element={<RequireAccount role="admin"><AdminDashboard /></RequireAccount>} />
+          <Route path={routes.adminDashboard} element={<Navigate to="/admin" replace />} />
+          <Route path={routes.myVisits} element={<RequireAccount role="patient"><MyVisits /></RequireAccount>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

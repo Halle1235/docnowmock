@@ -1,3 +1,6 @@
 project_id = "hewnuvtxkltviuqqkphp"
 [functions.demo-call-room]
 verify_jwt = false
+
+[functions.send-visit-ready-emails]
+verify_jwt = false

@@ -1,0 +1,16 @@
+export const routes = {
+  home: "/",
+  registration: "/registration",
+  medicalReason: "/medical-reason",
+  payment: "/payment",
+  waitingRoom: "/waiting-room",
+  auth: "/auth",
+  doctorLogin: "/doctor/login",
+  doctorRegistration: "/doctor/register",
+  resetPassword: "/reset-password",
+  doctorDashboard: "/doctor-dashboard",
+  call: "/call/:consultationId",
+  admin: "/admin",
+  adminDashboard: "/admin-dashboard",
+  myVisits: "/my-visits",
+} as const;

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const ResetPassword = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
@@ -17,7 +20,7 @@ const ResetPassword = () => {
   const [isRecovery, setIsRecovery] = useState(false);
 
   useEffect(() => {
-    // A recovery link signs the user in with a temporary session
+    // A recovery link signs the user in with a temporary session.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setIsRecovery(true);
     });
@@ -40,12 +43,12 @@ const ResetPassword = () => {
       if (error) throw error;
       setSent(true);
       toast({
-        title: "Check your inbox",
-        description: "We sent you a link to set a new password.",
+        title: t("recovery.inbox"),
+        description: t("recovery.sentLink"),
       });
     } catch (error: any) {
       toast({
-        title: "Could not send reset link",
+        title: t("recovery.sendFailed"),
         description: error.message,
         variant: "destructive",
       });
@@ -61,13 +64,13 @@ const ResetPassword = () => {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       toast({
-        title: "Password updated",
-        description: "You can now sign in with your new password.",
+        title: t("recovery.updated"),
+        description: t("recovery.updatedHint"),
       });
       navigate("/auth");
     } catch (error: any) {
       toast({
-        title: "Could not update password",
+        title: t("recovery.updateFailed"),
         description: error.message,
         variant: "destructive",
       });
@@ -81,10 +84,11 @@ const ResetPassword = () => {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/auth")}>
+            <Button variant="ghost" size="icon" aria-label={t("auth.backLogin")} onClick={() => navigate("/auth")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <h1 className="text-2xl font-bold text-primary">DocNow</h1>
+            <LanguageSwitcher />
           </div>
         </div>
       </header>
@@ -96,12 +100,10 @@ const ResetPassword = () => {
               <KeyRound className="w-8 h-8 text-primary" />
             </div>
             <h2 className="text-3xl font-bold mb-2">
-              {isRecovery ? "Set a new password" : "Reset your password"}
+              {isRecovery ? t("recovery.setTitle") : t("recovery.title")}
             </h2>
             <p className="text-muted-foreground">
-              {isRecovery
-                ? "Choose a new password for your account."
-                : "We'll email you a secure link to choose a new password."}
+              {isRecovery ? t("recovery.setHint") : t("recovery.hint")}
             </p>
           </div>
 
@@ -109,7 +111,7 @@ const ResetPassword = () => {
             {isRecovery ? (
               <form onSubmit={handleUpdate} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="new-password">New password</Label>
+                  <Label htmlFor="new-password">{t("recovery.password")}</Label>
                   <Input
                     id="new-password"
                     type="password"
@@ -120,21 +122,20 @@ const ResetPassword = () => {
                     minLength={8}
                     className="h-12"
                   />
-                  <p className="text-sm text-muted-foreground">At least 8 characters.</p>
+                  <p className="text-sm text-muted-foreground">{t("recovery.minimum")}</p>
                 </div>
                 <Button type="submit" className="w-full h-12" disabled={loading}>
-                  {loading ? "Saving..." : "Save new password"}
+                  {loading ? t("recovery.saving") : t("recovery.save")}
                 </Button>
               </form>
             ) : sent ? (
               <p className="text-center text-muted-foreground">
-                If an account exists for <span className="font-medium text-foreground">{email}</span>,
-                a reset link is on its way. The link expires after a short while.
+                {t("recovery.sent", { email })}
               </p>
             ) : (
               <form onSubmit={handleRequest} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="reset-email">Email address</Label>
+                  <Label htmlFor="reset-email">{t("recovery.email")}</Label>
                   <Input
                     id="reset-email"
                     type="email"
@@ -146,7 +147,7 @@ const ResetPassword = () => {
                   />
                 </div>
                 <Button type="submit" className="w-full h-12" disabled={loading}>
-                  {loading ? "Sending..." : "Send reset link"}
+                  {loading ? t("recovery.sending") : t("recovery.send")}
                 </Button>
               </form>
             )}

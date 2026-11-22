@@ -4,8 +4,8 @@ import type { Intake, BookingReason } from "@/lib/booking-intake";
 
 const BookingDraftContext = createContext<{
   intake: Intake | null; reason: BookingReason | null;
-  setIntake: (value: Intake) => void; setReason: (value: BookingReason) => void;
-}>({ intake: null, reason: null, setIntake: () => {}, setReason: () => {} });
+  clearDraft: () => void; setIntake: (value: Intake) => void; setReason: (value: BookingReason) => void;
+}>({ intake: null, reason: null, clearDraft: () => {}, setIntake: () => {}, setReason: () => {} });
 export const useBookingDraft = () => useContext(BookingDraftContext);
 export function BookingDraftProvider({ children }: { children: ReactNode }) {
   const [intake, setIntake] = useState<Intake | null>(null);
@@ -17,5 +17,6 @@ export function BookingDraftProvider({ children }: { children: ReactNode }) {
     if (previousUser.current && previousUser.current !== user?.id) { setIntake(null); setReason(null); }
     previousUser.current = user?.id ?? null;
   }, [user?.id, loading]);
-  return <BookingDraftContext.Provider value={{ intake, reason, setIntake, setReason }}>{children}</BookingDraftContext.Provider>;
+  const clearDraft = () => { setIntake(null); setReason(null); };
+  return <BookingDraftContext.Provider value={{ intake, reason, clearDraft, setIntake, setReason }}>{children}</BookingDraftContext.Provider>;
 }

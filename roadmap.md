@@ -1,4 +1,8 @@
 # Tasks
+- [ ] Port DocNow_editor_update.txt into the current source without reverting newer dashboards, account protections, analytics/history, manual summaries, localization, mock/payment state, or environment configuration.
+- [ ] Merge phone-width doctor controls/account menu, verified availability, draft clearing, active-visit actions, audited cancellation, follow-up booking, terminal/recoverable states, foreground refresh without same-account remounts, staff sign-in/accessibility, and Arabic copy.
+- [ ] Add the patch email worker and synthetic handler tests without deploying, scheduling, sending email, changing secrets, or applying hosted migrations; resolve source-only migration/type-generation constraints without weakening security.
+- [ ] Run TypeScript, production build, relevant local tests, and focused browser checks; report changed files and any unapplied deployment steps or unresolved conflicts.
 - [ ] Measure project running credits, database load, indexes and scheduled activity; implement verified high-impact optimizations without changing access rules or deleting data.
 - [x] Enable validated authenticated unpaid booking, immediate waiting-room redirect, unpaid labels, and serialized duplicate prevention; 30 tests pass, signed-in booking/readback/reload and mobile waiting room verified. Doctor-side acceptance not exercised in this patient session.
 - [x] Streamline homepage → public patient intake with identification toggle → signed-in medical reason and required consents → unavailable AED 249 checkout; memory-only drafts, safe sign-in return paths, 11 tests, signed-in flow, and mobile layout verified.

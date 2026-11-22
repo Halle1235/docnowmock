@@ -13,7 +13,7 @@ import { toast } from "sonner";
 export default function Payment() {
  const navigate = useNavigate();
  const { t } = useTranslation();
- const { intake, reason } = useBookingDraft();
+ const { intake, reason, clearDraft } = useBookingDraft();
  const [submitting, setSubmitting] = useState(false);
  const inFlight = useRef(false);
  const continueBooking = async () => {
@@ -28,6 +28,7 @@ export default function Payment() {
    });
    if (error) throw error;
    if (!data) throw new Error(t('payment.bookingFailed'));
+   clearDraft();
    navigate(`/waiting-room?id=${encodeURIComponent(data)}`, { replace: true });
   } catch (error) {
    const message = error && typeof error === "object" && "message" in error && typeof (error as { message: unknown }).message === "string" ? (error as { message: string }).message : "";

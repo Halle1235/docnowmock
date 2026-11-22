@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Video, Shield, Clock, CheckCircle, LogOut, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import BookingAvailability from "@/components/BookingAvailability";
 import doctorVideoCall from "@/assets/doctor-video-call.jpg";
 import { useAccount } from "@/components/AccountProvider";
 import { accountDestination } from "@/lib/account-access";
@@ -72,13 +73,7 @@ const Index = () => {
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center max-w-6xl mx-auto">
             {/* Copy */}
             <div className="text-center lg:text-left order-2 lg:order-1">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 mb-6 text-sm font-medium text-primary">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                </span>
-                {t("hero.waitTime")}
-              </div>
+              <BookingAvailability />
               <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-foreground tracking-tight leading-[1.1]">
                 {t("hero.title")}
               </h2>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,12 +25,32 @@ import {
 import BookingNotifications from "@/components/BookingNotifications";
 import { useBookingNotifications } from "@/hooks/use-booking-notifications";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { useAccount } from "@/components/AccountProvider";
+import { useBookingDraft } from "@/components/BookingDraftProvider";
+import { onForeground } from "@/lib/foreground";
+import { cancelMyWaitingBooking } from "@/lib/booking-continuity";
+import { activeVisitPath, canCancelWaitingBooking, isActiveVisit, orderVisitsByActivity } from "@/lib/visit-continuity";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Visit {
   id: string;
   created_at: string | null;
   reason_category: string | null;
   status: string;
+  room_url: string | null;
+  doctor_id: string | null;
+  payment_status: string;
   visit_summary: VisitSummary | null;
   visit_summary_approved_at: string | null;
 }
@@ -37,58 +58,73 @@ interface Visit {
 const LiveMyVisits = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user } = useAccount();
+  const { clearDraft } = useBookingDraft();
+  const userId = user?.id;
   const [visits, setVisits] = useState<Visit[]>([]);
   const [patientName, setPatientName] = useState("");
   const [patientEmail, setPatientEmail] = useState("");
   const [activeTab, setActiveTab] = useState<"visits" | "journal">("visits");
   const [journalFilter, setJournalFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
-  useBookingNotifications("patient", visits, !loading);
+  useBookingNotifications("patient", visits, !loading && !failed);
+
+  const cancel = useMutation({
+    mutationFn: cancelMyWaitingBooking,
+    onSuccess: (cancelled, id) => {
+      if (cancelled) {
+        setVisits((current) => current.map((visit) => visit.id === id ? { ...visit, status: "cancelled" } : visit));
+        toast.success(t("history.cancelled"));
+      } else {
+        toast.error(t("history.cancelConflict"));
+      }
+      setAttempt((value) => value + 1);
+    },
+    onError: () => toast.error(t("history.cancelError")),
+  });
+  const orderedVisits = orderVisitsByActivity(visits);
+  const bookFollowUp = () => {
+    clearDraft();
+    navigate("/registration");
+  };
 
   useEffect(() => {
-    let userId = "";
+    if (!userId) return;
+    let active = true;
+    let request = 0;
+    setPatientEmail(user?.email || "");
     const load = async () => {
+      const current = ++request;
       const [consultRes, profileRes] = await Promise.all([
         supabase
           .from("consultations")
-          .select("id, created_at, reason_category, status, visit_summary, visit_summary_approved_at")
+          .select("id, created_at, reason_category, status, room_url, doctor_id, payment_status, visit_summary, visit_summary_approved_at")
           .eq("patient_id", userId)
           .order("created_at", { ascending: false }),
         supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
       ]);
-
-      if (!consultRes.error) {
-        const loadedVisits = (consultRes.data as unknown as Visit[]) || [];
-        setVisits(loadedVisits);
-      }
+      if (!active || current !== request) return;
+      setFailed(!!consultRes.error);
+      if (!consultRes.error) setVisits((consultRes.data as unknown as Visit[]) || []);
       if (profileRes.data?.full_name) setPatientName(profileRes.data.full_name);
       setLoading(false);
     };
 
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) {
-        navigate("/auth");
-        return;
-      }
-      userId = user.id;
-      setPatientEmail(user.email || "");
-      load();
-      channel = supabase
-        .channel("my-visits")
-        .on(
-          "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "consultations", filter: `patient_id=eq.${userId}` },
-          load,
-        )
-        .subscribe();
-    });
-
+    void load();
+    const channel = supabase
+      .channel(`my-visits-${crypto.randomUUID()}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "consultations", filter: `patient_id=eq.${userId}` }, load)
+      .subscribe((state) => { if (state === "SUBSCRIBED") void load(); });
+    const unsubscribe = onForeground(() => { void load(); });
     return () => {
-      if (channel) supabase.removeChannel(channel);
+      active = false;
+      unsubscribe();
+      void supabase.removeChannel(channel);
     };
-  }, [navigate]);
+  }, [userId, attempt, user?.email]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -236,6 +272,11 @@ const LiveMyVisits = () => {
                 <Stethoscope className="h-5 w-5 animate-pulse text-primary" />
                 {t("dashboard.loading")}
               </div>
+            ) : failed ? (
+              <Card className="space-y-3 p-6">
+                <p role="alert">{t("history.unavailable")}</p>
+                <Button onClick={() => { setLoading(true); setAttempt((value) => value + 1); }}>{t("history.retry")}</Button>
+              </Card>
             ) : visits.length === 0 ? (
               <Card className="p-10 text-center bg-card space-y-3">
                 <FileText className="mx-auto h-10 w-10 text-muted-foreground/40" />
@@ -250,7 +291,7 @@ const LiveMyVisits = () => {
               </Card>
             ) : (
               <div className="space-y-4">
-                {visits.map((v) => (
+                {orderedVisits.map((v) => (
                   <Card key={v.id} className="p-5 sm:p-6 space-y-4 bg-card hover:shadow-md transition-shadow">
                     {/* Card Header */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
@@ -277,21 +318,34 @@ const LiveMyVisits = () => {
                       </div>
                     </div>
 
-                    {/* Active call button if in queue or claimed */}
-                    {["pending", "claimed", "in_progress"].includes(v.status) && (
-                      <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 p-3">
+                    {/* Active visits lead; ready rooms can be joined directly. */}
+                    {isActiveVisit(v) && (
+                      <div className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="font-medium text-xs text-primary">Consultation in progress or waiting</p>
                           <p className="text-[11px] text-muted-foreground">Join room to meet your doctor.</p>
                         </div>
-                        <Button
-                          size="sm"
-                          onClick={() => navigate(`/waiting-room?id=${v.id}`)}
-                          className="gap-2 font-semibold shadow-sm text-xs"
-                        >
-                          <Video className="h-3.5 w-3.5" />
-                          Open waiting room
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                          <Button size="sm" onClick={() => navigate(activeVisitPath(v))} className="gap-2 font-semibold shadow-sm text-xs">
+                            <Video className="h-3.5 w-3.5" />
+                            {t(v.room_url && v.status !== "pending" ? "history.join" : "history.resume")}
+                          </Button>
+                          {canCancelWaitingBooking(v) && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild><Button variant="outline" size="sm" disabled={cancel.isPending}>{t("history.cancel")}</Button></AlertDialogTrigger>
+                              <AlertDialogContent className="w-[calc(100%-2rem)] rounded-lg">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>{t("history.confirmCancel")}</AlertDialogTitle>
+                                  <AlertDialogDescription>{t("history.cancelLimit")}</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>{t("history.keep")}</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => cancel.mutate(v.id)}>{t("history.cancel")}</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -301,7 +355,7 @@ const LiveMyVisits = () => {
                         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           Attending Doctor Summary & Instructions
                         </span>
-                        <SummaryView s={v.visit_summary} />
+                        <SummaryView s={v.visit_summary} onBookFollowUp={v.status === "completed" ? bookFollowUp : undefined} />
                       </div>
                     ) : (
                       <div className="rounded-xl border border-dashed p-3.5 text-xs text-muted-foreground bg-muted/20">

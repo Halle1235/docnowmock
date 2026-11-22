@@ -22,3 +22,9 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Consultation-ready email
+
+Apply the booking continuity migration and deploy the `send-visit-ready-emails` edge function. Configure `RESEND_API_KEY`, `DOCNOW_EMAIL_FROM` (a verified sender), `DOCNOW_APP_URL` (the HTTPS app origin), and `LOVABLE_CRON_SECRET` as server secrets.
+
+Configure a scheduled POST to `/functions/v1/send-visit-ready-emails` once a minute with `Authorization: Bearer <LOVABLE_CRON_SECRET>`. Monitor HTTP failures and the worker's sent and failed counts. Verify delivery to a disposable confirmed patient account before enabling the schedule for real visits.

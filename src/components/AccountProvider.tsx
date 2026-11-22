@@ -1,10 +1,11 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { bookingReturnPath } from "@/lib/booking-intake";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { accountAccess, accountDestination, type AccountAccess } from "@/lib/account-access";
 import { Button } from "@/components/ui/button";
+import { onForeground } from "@/lib/foreground";
 
 interface AccountState {
   user: User | null;
@@ -33,27 +34,37 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const stateRef = useRef(state);
   stateRef.current = state;
+  const accountId = useRef<string | null>(null);
+  const latestCheck = useRef(0);
 
-  const refresh = async (background = false) => {
+  const refresh = useCallback(async (background = false) => {
+    const check = ++latestCheck.current;
     try {
       const {
         data: { user },
         error,
       } = await supabase.auth.getUser();
+      if (check !== latestCheck.current) return;
+      if (error && error.name !== "AuthSessionMissingError") throw error;
       if (!user) {
+        accountId.current = null;
         setState({ user: null, access: null, loading: false, error: "" });
         return;
       }
-      if (error) throw error;
 
-      // Ensure profile and role are provisioned for new signups
-      void supabase.rpc("ensure_default_patient_account");
+      const accountChanged = accountId.current !== user.id;
+      if (accountChanged) {
+        accountId.current = user.id;
+        setState({ user: null, access: null, loading: true, error: "" });
+        // Provision legacy patient accounts without delaying the authorization read.
+        void supabase.rpc("ensure_default_patient_account");
+      }
 
       const [roles, doctor] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", user.id),
         supabase.from("doctor_profiles").select("is_verified").eq("user_id", user.id).maybeSingle(),
       ]);
-
+      if (check !== latestCheck.current) return;
       if (roles.error || doctor.error) throw roles.error || doctor.error;
 
       const access = accountAccess(
@@ -61,38 +72,54 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         doctor.data?.is_verified === true,
         !!doctor.data,
       );
-
       setState({ user, access, loading: false, error: "" });
     } catch {
-      if (background && stateRef.current.user) {
-        // Keep existing user and access during background refreshes on tab switch / window focus
+      if (check !== latestCheck.current) return;
+      if (background && stateRef.current.user?.id === accountId.current) {
+        // A transient revalidation failure must not unmount an active call or form.
         return;
       }
+      accountId.current = null;
       setState({ user: null, access: null, loading: false, error: "Your account access could not be checked." });
     }
-  };
+  }, []);
 
   useEffect(() => {
+    let scheduled: ReturnType<typeof setTimeout> | undefined;
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION") return;
+      clearTimeout(scheduled);
+      const nextId = session?.user.id ?? null;
+      if (event === "SIGNED_OUT" || !nextId) {
+        latestCheck.current++;
+        accountId.current = null;
         setState({ user: null, access: null, loading: false, error: "" });
-      } else if (event === "SIGNED_IN") {
-        // Also fires on tab refocus; keep an existing session mounted if the check fails
-        void refresh(true);
-      } else {
-        // TOKEN_REFRESHED, USER_UPDATED, etc. happen silently in the background
-        void refresh(true);
+        return;
       }
+      if (nextId !== accountId.current) {
+        latestCheck.current++;
+        accountId.current = nextId;
+        setState({ user: null, access: null, loading: true, error: "" });
+      }
+      scheduled = setTimeout(() => {
+        void refresh(stateRef.current.user?.id === nextId);
+      }, 0);
     });
 
     void refresh(false);
+    const unsubscribe = onForeground(() => {
+      void refresh(!!stateRef.current.user);
+    });
 
     return () => {
+      latestCheck.current++;
+      clearTimeout(scheduled);
       subscription.unsubscribe();
+      unsubscribe();
     };
-  }, []);
+  }, [refresh]);
 
   return (
     <AccountContext.Provider value={{ ...state, refresh: () => refresh(false) }}>{children}</AccountContext.Provider>
@@ -122,11 +149,11 @@ export function RequireAccount({ children, role }: { children: ReactNode; role?:
 
   if (!user || !access) {
     const returnTo = bookingReturnPath(location.pathname + location.search);
-    return <Navigate to={`/auth?as=patient${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`} replace />;
+    return <Navigate to={`/auth?as=${role === "doctor" ? "doctor" : "patient"}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`} replace />;
   }
 
   if (role && access !== role) {
-    // Users with a pending doctor application retain full access to their patient visits and care
+    // Users with a pending doctor application retain full access to their patient visits and care.
     if (role === "patient" && access === "pending") {
       return <>{children}</>;
     }
