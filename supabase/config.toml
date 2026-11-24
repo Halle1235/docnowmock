@@ -25,6 +25,3 @@ verify_jwt = true
 
 [functions.revoke-call-access]
 verify_jwt = true
-
-[functions.generate-visit-summary]
-verify_jwt = false

@@ -2,7 +2,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.consultations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.doctor_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.visit_summary_drafts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.visit_summary_drafts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Patient identity, consent and the pending amount are derived by the booking RPC.

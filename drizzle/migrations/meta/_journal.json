@@ -120,6 +120,13 @@
       "when": 1795478402000,
       "tag": "0019_manual_visit_summary",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795478403000,
+      "tag": "0020_remove_ai_visit_summary",
+      "breakpoints": true
     }
   ]
 }

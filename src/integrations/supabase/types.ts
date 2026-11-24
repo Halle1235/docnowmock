@@ -77,7 +77,6 @@ export type Database = {
           visit_summary: Json | null
           visit_summary_approved_at: string | null
           visit_summary_approved_by: string | null
-          visit_summary_generated_at: string | null
         }
         Insert: {
           claimed_at?: string | null
@@ -105,7 +104,6 @@ export type Database = {
           visit_summary?: Json | null
           visit_summary_approved_at?: string | null
           visit_summary_approved_by?: string | null
-          visit_summary_generated_at?: string | null
         }
         Update: {
           claimed_at?: string | null
@@ -133,7 +131,6 @@ export type Database = {
           visit_summary?: Json | null
           visit_summary_approved_at?: string | null
           visit_summary_approved_by?: string | null
-          visit_summary_generated_at?: string | null
         }
         Relationships: []
       }
@@ -329,32 +326,6 @@ export type Database = {
         }
         Relationships: []
       }
-      visit_summary_drafts: {
-        Row: {
-          consultation_id: string
-          generated_at: string
-          summary: Json
-        }
-        Insert: {
-          consultation_id: string
-          generated_at?: string
-          summary: Json
-        }
-        Update: {
-          consultation_id?: string
-          generated_at?: string
-          summary?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "visit_summary_drafts_consultation_id_fkey"
-            columns: ["consultation_id"]
-            isOneToOne: true
-            referencedRelation: "consultations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       [_ in never]: never
@@ -375,10 +346,6 @@ export type Database = {
       }
       audit_patient_record_read: {
         Args: { _id: string; _table: string }
-        Returns: boolean
-      }
-      audit_summary_draft_read: {
-        Args: { _consultation_id: string }
         Returns: boolean
       }
       book_unpaid_consultation: {
@@ -402,10 +369,6 @@ export type Database = {
       ensure_default_patient_account: { Args: never; Returns: undefined }
       get_assigned_visit_summary: { Args: { _consultation_id: string }; Returns: Json }
       get_authorized_call_record: {
-        Args: { _consultation_id: string }
-        Returns: Json
-      }
-      get_authorized_summary_draft: {
         Args: { _consultation_id: string }
         Returns: Json
       }
