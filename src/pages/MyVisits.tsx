@@ -86,6 +86,7 @@ const LiveMyVisits = () => {
     onError: () => toast.error(t("history.cancelError")),
   });
   const orderedVisits = orderVisitsByActivity(visits);
+  const activeVisit = !loading && !failed ? visits.find(isActiveVisit) : undefined;
   const bookFollowUp = () => {
     clearDraft();
     navigate("/registration");
@@ -226,10 +227,19 @@ const LiveMyVisits = () => {
               </div>
             </div>
 
-            <Button onClick={() => navigate("/registration")} className="gap-2 shadow-sm font-semibold shrink-0">
-              <Plus className="h-4 w-4" />
-              Book consultation
-            </Button>
+            <div className="flex flex-col gap-2 sm:items-end">
+              {activeVisit && (
+                <Button onClick={() => navigate(activeVisitPath(activeVisit))} className="gap-2 font-semibold">
+                  <Video aria-hidden="true" className="h-4 w-4" />
+                  {t("history.resumeVisit")}
+                </Button>
+              )}
+              <Button variant={activeVisit ? "outline" : "default"} onClick={() => navigate("/registration")}
+                className="gap-2 font-semibold">
+                <Plus aria-hidden="true" className="h-4 w-4" />
+                Book consultation
+              </Button>
+            </div>
           </div>
         </div>
 

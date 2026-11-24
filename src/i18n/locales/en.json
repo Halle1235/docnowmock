@@ -546,6 +546,7 @@
     "retry": "Retry",
     "summaryHint": "Your doctor-approved summaries appear here after your visits.",
     "join": "Join consultation",
+    "resumeVisit": "Resume visit",
     "resume": "Return to waiting room",
     "cancel": "Cancel booking",
     "confirmCancel": "Cancel this booking?",
