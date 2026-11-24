@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useAccount } from "./AccountProvider";
 import type { Intake, BookingReason } from "@/lib/booking-intake";
 
@@ -17,6 +17,6 @@ export function BookingDraftProvider({ children }: { children: ReactNode }) {
     if (previousUser.current && previousUser.current !== user?.id) { setIntake(null); setReason(null); }
     previousUser.current = user?.id ?? null;
   }, [user?.id, loading]);
-  const clearDraft = () => { setIntake(null); setReason(null); };
+  const clearDraft = useCallback(() => { setIntake(null); setReason(null); }, []);
   return <BookingDraftContext.Provider value={{ intake, reason, clearDraft, setIntake, setReason }}>{children}</BookingDraftContext.Provider>;
 }

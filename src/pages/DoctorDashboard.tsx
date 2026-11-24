@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Clock,
+  CircleUserRound,
   User,
   LogOut,
   Video,
@@ -30,6 +31,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import BookingNotifications from "@/components/BookingNotifications";
 import { useBookingNotifications } from "@/hooks/use-booking-notifications";
 import { cn } from "@/lib/utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { setMyDoctorAvailability } from "@/lib/booking-continuity";
 
 interface Consultation {
   id: string;
@@ -50,7 +54,8 @@ const LiveDoctorDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
@@ -58,8 +63,8 @@ const LiveDoctorDashboard = () => {
   const [doctorInfo, setDoctorInfo] = useState({
     fullName: "Doctor",
     specialization: "General Practice & Telehealth",
-    licenseNumber: "DHA Licensed",
-    isAvailable: true,
+    licenseNumber: "",
+    isAvailable: null as boolean | null,
   });
   const [journalId, setJournalId] = useState<string | null>(
     typeof location.state?.journalId === "string" ? location.state.journalId : null,
@@ -68,6 +73,15 @@ const LiveDoctorDashboard = () => {
   const claimInFlight = useRef(false);
   const [historySearch, setHistorySearch] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "active" | "completed">("all");
+
+  const availability = useMutation({
+    mutationFn: setMyDoctorAvailability,
+    onSuccess: (_, isAvailable) => {
+      setDoctorInfo(previous => ({ ...previous, isAvailable }));
+      void queryClient.invalidateQueries({ queryKey: ["booking-availability"] });
+    },
+    onError: () => toast({ title: t("availability.updateError"), variant: "destructive" }),
+  });
 
   useBookingNotifications("doctor", consultations, !loading);
 
@@ -123,8 +137,8 @@ const LiveDoctorDashboard = () => {
     setDoctorInfo({
       fullName: profileRes.data?.full_name || user.email?.split("@")[0] || "Doctor",
       specialization: docProfileRes.data?.specialization || "Telehealth Practitioner",
-      licenseNumber: docProfileRes.data?.license_number || "DHA Licensed",
-      isAvailable: docProfileRes.data?.is_available ?? true,
+      licenseNumber: docProfileRes.data?.license_number || "",
+      isAvailable: docProfileRes.data?.is_available ?? null,
     });
 
     return true;
@@ -303,7 +317,7 @@ const LiveDoctorDashboard = () => {
     <div className="min-h-screen bg-slate-50/60 dark:bg-background text-foreground">
       {/* Top Header */}
       <header className="border-b bg-card sticky top-0 z-20">
-        <div className="mx-auto flex min-h-16 max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex min-h-16 max-w-5xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-2 sm:px-6 sm:py-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Stethoscope className="h-5 w-5" />
@@ -316,31 +330,21 @@ const LiveDoctorDashboard = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center sm:gap-2">
             <BookingNotifications role="doctor" />
             <LanguageSwitcher />
 
-            <div className="hidden sm:flex items-center gap-2.5 border-s ps-4">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                  {doctorInfo.fullName.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="text-start">
-                <p className="text-xs font-medium leading-none">{doctorInfo.fullName}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{userEmail}</p>
-              </div>
-            </div>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <LogOut className="h-4 w-4 me-1.5" />
-              <span className="hidden sm:inline">{t("header.logout")}</span>
-            </Button>
+            <DropdownMenu dir={i18n.dir()}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label={t("header.account")}><CircleUserRound /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 max-w-[calc(100vw-2rem)]">
+                {userEmail && <DropdownMenuLabel className="break-all text-muted-foreground" dir="ltr">{userEmail}</DropdownMenuLabel>}
+                <DropdownMenuItem onSelect={() => void handleLogout()} className="gap-2">
+                  <LogOut aria-hidden="true" className="h-4 w-4" />{t("header.logout")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -350,21 +354,20 @@ const LiveDoctorDashboard = () => {
         <div className="rounded-2xl border bg-card p-5 sm:p-6 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <Avatar className="h-14 w-14 border-2 border-primary/20 shadow-sm">
+              <Avatar className="h-14 w-14 shrink-0 border-2 border-primary/20 shadow-sm">
                 <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
                   {doctorInfo.fullName.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div>
+              <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <h1 className="text-2xl font-bold tracking-tight">Dr. {doctorInfo.fullName}</h1>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    {t("dashboard.onlineStatus", "Online & Available")}
-                  </span>
+                  <h1 className="min-w-0 text-2xl font-bold tracking-tight [overflow-wrap:anywhere]">Dr. {doctorInfo.fullName}</h1>
+                  <Badge variant={doctorInfo.isAvailable ? "default" : "secondary"}>
+                    {t(doctorInfo.isAvailable === null ? "availability.unknown" : doctorInfo.isAvailable ? "availability.accepting" : "availability.paused")}
+                  </Badge>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
-                  {doctorInfo.specialization} · {doctorInfo.licenseNumber || "DHA Licensed"}
+                <p className="mt-1 text-xs text-muted-foreground [overflow-wrap:anywhere] sm:text-sm">
+                  {doctorInfo.specialization}{doctorInfo.licenseNumber && ` · ${doctorInfo.licenseNumber}`}
                 </p>
               </div>
             </div>
@@ -386,6 +389,10 @@ const LiveDoctorDashboard = () => {
               <span className="text-[11px] mt-0.5">Dubai, United Arab Emirates (GST)</span>
             </div>
           </div>
+          <Button variant="outline" size="sm" className="mt-3" disabled={availability.isPending}
+            onClick={() => availability.mutate(!doctorInfo.isAvailable)}>
+            {t(doctorInfo.isAvailable ? "availability.pause" : "availability.start")}
+          </Button>
         </div>
 
         {/* Top 4 KPI Metric Cards */}
@@ -527,7 +534,7 @@ const LiveDoctorDashboard = () => {
                     className="p-5 border-amber-500/40 bg-amber-500/[0.03] shadow-sm hover:shadow transition-shadow"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                      <div className="flex-1 space-y-2.5">
+                      <div className="min-w-0 flex-1 space-y-2.5 break-words">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 border border-amber-500/30">
                             <AvatarFallback className="bg-amber-500/10 text-amber-700 font-semibold text-xs">
@@ -581,7 +588,7 @@ const LiveDoctorDashboard = () => {
 
                       <Button
                         onClick={() => claimConsultation(consultation.id)}
-                        disabled={claimingId !== null}
+                        disabled={claimingId !== null || doctorInfo.isAvailable === false}
                         className="sm:self-center shrink-0 gap-2 shadow-sm font-semibold"
                       >
                         <CheckCircle2 className="h-4 w-4" />
@@ -677,7 +684,7 @@ const LiveDoctorDashboard = () => {
                 {filteredConsultations.map((consultation) => (
                   <Card key={consultation.id} className="p-5 bg-card hover:shadow-md transition-shadow">
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                      <div className="flex-1 space-y-3">
+                      <div className="min-w-0 flex-1 space-y-3 break-words">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 border border-primary/20">
                             <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
@@ -731,7 +738,7 @@ const LiveDoctorDashboard = () => {
                       </div>
 
                       {/* Action buttons */}
-                      <div className="flex sm:flex-col gap-2 shrink-0 sm:items-end border-t sm:border-t-0 pt-3 sm:pt-0">
+                      <div className="flex flex-col gap-2 shrink-0 sm:items-end border-t sm:border-t-0 pt-3 sm:pt-0 [&>button]:min-h-11 sm:[&>button]:min-h-0">
                         {["claimed", "in_progress"].includes(consultation.status) && (
                           <Button
                             onClick={() => startVideo(consultation.id)}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -175,7 +175,7 @@ const LiveMyVisits = () => {
     <div className="min-h-screen bg-slate-50/60 dark:bg-background text-foreground">
       {/* Top Header */}
       <header className="border-b bg-card sticky top-0 z-20">
-        <div className="container mx-auto px-4 py-3 sm:px-6 flex items-center justify-between">
+        <div className="container mx-auto flex flex-wrap items-center justify-between gap-y-1 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
             <HeartPulse className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold tracking-tight text-primary">DocNow</span>
@@ -474,6 +474,9 @@ const LiveMyVisits = () => {
             )}
           </Card>
         )}
+        <Button asChild variant="link" className="h-auto px-0">
+          <Link to="/reset-password?mode=setup">{t("bookingEmail.setPassword")}</Link>
+        </Button>
       </main>
     </div>
   );

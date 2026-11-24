@@ -9,7 +9,8 @@
     "doctors": "DocNow Doctors",
     "myVisits": "My visits",
     "doctorDashboard": "Doctor portal",
-    "adminPortal": "Admin portal"
+    "adminPortal": "Admin portal",
+    "account": "Account menu"
   },
   "visits": {
     "tabVisits": "Consultations & Visits",
@@ -19,10 +20,10 @@
     "showAll": "Show all my records"
   },
   "hero": {
-    "title": "Meet doctors directly via video",
-    "subtitle": "Medical appointments when it suits you. No waiting times, just safe and secure care.",
-    "bookButton": "Book video appointment – 249 AED",
-    "waitTime": "Average wait time: 5 minutes"
+    "title": "Online doctor visits in the UAE",
+    "subtitle": "Request a video visit and join when your doctor is ready.",
+    "bookButton": "Book a video visit",
+    "bookingFee": "Listed fee AED {{amount}}. No payment at booking."
   },
   "features": {
     "videoConsultation": {
@@ -35,22 +36,22 @@
     },
     "quickAccess": {
       "title": "Quick Access",
-      "description": "Get care within minutes and digital prescriptions directly in the app."
+      "description": "Join the waiting room after booking."
     }
   },
   "howItWorks": {
     "title": "How it works",
     "step1": {
-      "title": "Register",
-      "description": "Verify your identity securely with your passport number"
+      "title": "Enter your details",
+      "description": "Provide your contact and identification details."
     },
     "step2": {
-      "title": "Pay for your appointment",
-      "description": "Secure payment – 249 AED per video consultation"
+      "title": "Review your booking",
+      "description": "Review your details, then join the waiting room."
     },
     "step3": {
       "title": "Meet the doctor",
-      "description": "Connect via video and get a prescription digitally right after the appointment"
+      "description": "Join the video call when your doctor is ready."
     },
     "security": {
       "title": "Safe care according to the highest standards",
@@ -59,7 +60,7 @@
     "getStarted": "Get started now"
   },
   "footer": {
-    "copyright": "© 2025 DocNow. All rights reserved.",
+    "copyright": "© DocNow",
     "tagline": "Licensed doctors • Secure video • Digital care"
   },
   "auth": {
@@ -91,7 +92,13 @@
     "patientAccountBlockedTitle": "Patient account detected",
     "patientAccountBlockedDesc": "This account is registered as a patient. The Doctor Portal is reserved for verified healthcare providers and DHA-licensed doctors. Patients cannot access the doctor portal or apply using a patient account.",
     "goToPatientVisits": "Go to my patient visits",
-    "signOutDifferentAccount": "Sign out / Use another account"
+    "signOutDifferentAccount": "Sign out / Use another account",
+    "create": "Create an account",
+    "forgot": "Forgot password?",
+    "existing": "Already have an account? Sign in",
+    "confirmEmail": "Check your email to confirm your account before signing in.",
+    "backLogin": "Back to sign in",
+    "approval": "Doctor accounts require administrator licence approval."
   },
   "dashboard": {
     "title": "Your consultations",
@@ -179,7 +186,6 @@
     "outsideUae": "Outside the UAE, call the emergency number where you are. Your phone country code does not indicate your current location.",
     "securityNote": "Your details are saved to your patient profile when you book.",
     "continueButton": "Next: medical reason & consent",
-    "termsNote": "By continuing you agree to our terms of service",
     "fillAllFields": "Please check the required details",
     "allInfoRequired": "All information is required to verify your identity",
     "verificationComplete": "Verification complete",
@@ -212,7 +218,7 @@
     },
     "descriptionLabel": "Describe your symptoms",
     "descriptionPlaceholder": "Please describe your symptoms, when they started, and any relevant details...",
-    "continueButton": "Continue to payment",
+    "continueButton": "Review booking",
     "selectCategory": "Please select a category",
     "provideDescription": "Please describe your symptoms",
     "emergencyTitle": "Is this an emergency?",
@@ -231,7 +237,7 @@
     "invalidDescription": "Enter a description of up to 2,000 characters."
   },
   "payment": {
-    "title": "Pay for your appointment",
+    "title": "Review your booking",
     "subtitle": "Secure payment with encrypted connection",
     "consultationLabel": "Video consultation",
     "price": "249 AED",
@@ -499,5 +505,135 @@
     "grantRole": "Grant {{role}}",
     "removeRole": "Remove {{role}}",
     "selfNotice": "You cannot change your own roles. Ask another administrator if needed."
+  },
+  "history": {
+    "unavailable": "We couldn’t load your visits.",
+    "retry": "Retry",
+    "summaryHint": "Your doctor-approved summaries appear here after your visits.",
+    "join": "Join consultation",
+    "resume": "Return to waiting room",
+    "cancel": "Cancel booking",
+    "confirmCancel": "Cancel this booking?",
+    "cancelLimit": "You can cancel while the booking is still waiting for a doctor.",
+    "keep": "Keep booking",
+    "cancelled": "Booking cancelled.",
+    "cancelConflict": "This booking can no longer be cancelled here. Check its current status.",
+    "cancelError": "Couldn’t cancel the booking. Please try again.",
+    "followUp": "Follow-up instructions",
+    "bookFollowUp": "Book a follow-up"
+  },
+  "lounge": {
+    "completed": "Consultation completed",
+    "cancelled": "Consultation cancelled",
+    "back": "Back to my visits",
+    "loadError": "Unable to load consultation status. Trying again…",
+    "readyNow": "Ready now",
+    "short": "< 3 mins",
+    "minutes": "~{{count}} mins",
+    "patient": "Patient consultation",
+    "visits": "My visits",
+    "yourVisit": "YOUR CONSULTATION",
+    "title": "Waiting room",
+    "readyMessage": "Your doctor is ready to see you.",
+    "waitingMessage": "Your booking is in the queue for a doctor.",
+    "devices": "Camera & microphone",
+    "before": "Before you join",
+    "you": "You",
+    "preview": "Your device preview stays on this device. UAE PASS verification is not linked.",
+    "unpaid": "Unpaid booking · No payment has been taken.",
+    "doctor": "Your doctor",
+    "finding": "Finding your doctor",
+    "next": "Next available doctor",
+    "general": "General consultation",
+    "status": "Consultation status",
+    "ready": "Ready to join",
+    "waiting": "Waiting for a doctor",
+    "estimate": "Estimated wait",
+    "place": "Your place in line",
+    "estimates": "Wait times are estimates",
+    "reason": "Reason for your visit",
+    "join": "Join video call",
+    "muted": "Your microphone will be muted when you enter.",
+    "instructions": "You can enter once the doctor starts the call.",
+    "queueError": "Queue position unavailable",
+    "preparing": "Doctor is preparing the call",
+    "preparingMessage": "A doctor accepted your visit and is preparing the video call.",
+    "backgroundHint": "You can switch tabs or apps. Return through My Visits to check your booking.",
+    "testDevices": "Test camera & mic"
+  },
+  "recovery": {
+    "inbox": "Check your inbox",
+    "sentLink": "We sent you a link to set a new password.",
+    "sendFailed": "Could not send reset link",
+    "updated": "Password updated",
+    "updatedHint": "You can now sign in with your new password.",
+    "updateFailed": "Could not update password",
+    "setTitle": "Set a new password",
+    "title": "Reset your password",
+    "setHint": "Choose a new password for your account.",
+    "hint": "We'll email you a secure link to choose a new password.",
+    "password": "New password",
+    "minimum": "At least 8 characters.",
+    "saving": "Saving...",
+    "save": "Save new password",
+    "sent": "If an account exists for {{email}}, a reset link is on its way.",
+    "email": "Email address",
+    "sending": "Sending...",
+    "send": "Send reset link"
+  },
+  "availability": {
+    "open": "Doctors are accepting consultation requests",
+    "closed": "No doctor is accepting requests right now. You can still join the queue.",
+    "unknown": "Doctor availability is temporarily unavailable",
+    "checking": "Checking doctor availability…",
+    "accepting": "You’re accepting consultation requests.",
+    "paused": "You’ve paused new consultation requests.",
+    "pause": "Pause new requests",
+    "start": "Accept new requests",
+    "updateError": "Couldn’t update your availability."
+  },
+  "deviceCheck": {
+    "label": "Camera and microphone preview",
+    "preview": "Your camera preview",
+    "enable": "Enable camera & mic",
+    "local": "Local preview",
+    "camera": "Camera",
+    "mic": "Mic",
+    "microphone": "Microphone",
+    "cameraReady": "Camera ready",
+    "cameraOff": "Camera off",
+    "micReady": "Microphone ready",
+    "micOff": "Microphone off",
+    "micInput": "Microphone input",
+    "chooseCamera": "Choose camera",
+    "chooseMic": "Choose microphone",
+    "defaultCamera": "Default camera",
+    "defaultMic": "Default microphone",
+    "privacy": "The preview stays on your device.",
+    "noAccess": "Device access is unavailable. Check your browser permissions. You can still join the call.",
+    "blocked": "{{device}} access is blocked. Allow it in your browser's site permissions.",
+    "notFound": "{{device}} not found. Connect a device or choose another one.",
+    "busy": "{{device}} is busy or unavailable. Close other apps that may be using it and try again.",
+    "unavailable": "{{device}} could not start. Check your device and browser permissions.",
+    "previewError": "The camera preview could not play."
+  },
+  "bookingEmail": {
+    "title": "Verify your email",
+    "hint": "Use the code from your email to continue booking.",
+    "sent": "We sent a code to",
+    "recipient": "Send your code to",
+    "label": "Six-digit code",
+    "verify": "Verify and continue",
+    "invalid": "That code is invalid or expired. Try again or request a new one.",
+    "send": "Send email code",
+    "sending": "Sending your code…",
+    "sendError": "We couldn’t send your code. Try again or sign in with your password.",
+    "resend": "Send a new code",
+    "resendTimer": "Resend in {{seconds}}s",
+    "edit": "Edit email",
+    "usePassword": "Sign in with password",
+    "expiredDraft": "Start from patient details in this tab to continue booking.",
+    "backDetails": "Back to patient details",
+    "setPassword": "Email me a password setup link"
   }
 }

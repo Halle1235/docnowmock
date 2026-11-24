@@ -19,8 +19,8 @@ const LanguageSwitcher = () => {
       onClick={toggleLanguage}
       className="gap-2"
     >
-      <Languages className="h-4 w-4" />
-      {i18n.language === 'en' ? 'العربية' : 'English'}
+      <Languages aria-hidden="true" className="h-4 w-4" />
+      {i18n.language === 'en' ? <span lang="ar">العربية</span> : <span lang="en">English</span>}
     </Button>
   );
 };

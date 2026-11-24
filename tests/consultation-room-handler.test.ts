@@ -7,7 +7,7 @@ import ts from "typescript";
 // Execute the actual edge handler with fake identity/provider boundaries.
 // No network, real credentials, or real video rooms are used by this suite.
 const source = readFileSync(new URL("../supabase/functions/create-daily-room/index.ts", import.meta.url), "utf8")
-  .replace(/^import .* from "https:\/\/[^\n]+;\n/gm, "");
+  .replace(/^import [^\n]*\n/gm, "");
 const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
 const doctorA = "10000000-0000-4000-8000-000000000001";
 const patientA = "10000000-0000-4000-8000-000000000002";
@@ -42,7 +42,7 @@ async function requestAs(user: string | null, record: RecordData | null, options
     return new Response(JSON.stringify(url.endsWith("/meeting-tokens") ? { token: "synthetic-token" } : { name: body.name, url: `https://test.daily.co/${body.name}` }), { status: 200 });
   };
   const deno = { env: { get: () => "synthetic-test-only" }, serve: (fn: typeof handler) => { handler = fn; } };
-  new Function("Deno", "createClient", "corsHeaders", "fetch", compiled)(deno, () => client, {}, fakeFetch);
+  new Function("Deno", "createClient", "fetch", compiled)(deno, () => client, fakeFetch);
   assert.ok(handler);
   const response = await handler(new Request("https://app.invalid/create-daily-room", {
     method: "POST", headers: options.auth === false ? {} : { Authorization: "Bearer synthetic-session" },

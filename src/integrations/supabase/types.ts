@@ -390,6 +390,9 @@ export type Database = {
         Returns: undefined
       }
       claim_test_booking: { Args: { _id: string }; Returns: boolean }
+      cancel_my_waiting_booking: { Args: { _consultation_id: string }; Returns: boolean }
+      consultations_accepting_requests: { Args: never; Returns: boolean }
+      set_my_doctor_availability: { Args: { _available: boolean }; Returns: undefined }
       complete_test_booking: { Args: { _id: string }; Returns: boolean }
       create_test_booking: {
         Args: { _name: string; _reason: string }

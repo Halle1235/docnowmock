@@ -1,4 +1,16 @@
 project_id = "hewnuvtxkltviuqqkphp"
+
+[auth.email]
+enable_confirmations = true
+
+[auth.email.template.magic_link]
+subject = "Your DocNow verification code"
+content_path = "./supabase/templates/booking-code.html"
+
+[auth.email.template.confirmation]
+subject = "Confirm your DocNow email"
+content_path = "./supabase/templates/confirm-account.html"
+
 [functions.demo-call-room]
 verify_jwt = false
 

@@ -99,6 +99,13 @@
       "when": 1793847463304,
       "tag": "0013_provision_legacy_patient_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795478400000,
+      "tag": "0017_booking_continuity",
+      "breakpoints": true
     }
   ]
 }

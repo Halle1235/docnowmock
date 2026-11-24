@@ -1,24 +1,18 @@
 # Architecture rules
 - Booking phones use maintained international numbering metadata and save in E.164 format; emergency guidance uses explicit location, never a phone prefix as evidence of location.
-- Mock payment short-circuits before authentication and live consultation writes; in mock-login mode, bookings go to a separate auto-expiring shared test queue (display name + visit reason only, reached solely through bounded functions with an active-row cap) so they reach doctors on other devices, and it never touches consultations, clinical records, permissions, or room authorization.
-- In-app booking alerts derive from authorized reads; shared role-scoped audio activates through browser gestures and deduplicated notifications, so polling never repeats sounds. Sample cross-tab acceptance signals contain only a fixed fictional visit ID and never update permissions, assignment, or clinical records.
-- Share fictional patient identities across sample queue, completed history, and journal to preserve ID-based continuity without seeding live records.
-- Patient journals use append-only server-derived patient/doctor identity and timestamp through authenticated audited RPCs; verified assigned doctors can append during active or completed visits without reopening room access, and read the patient's cross-visit timeline. Doctor call completion opens this journal on the original dashboard; sample journals remain isolated in memory.
-- Patient sample profile, ratings, follow-ups, and visit documents stay in memory; PDF/QR output is explicitly non-clinical and never a real pharmacy verification or insurance claim.
+- In-app booking alerts derive from authorized reads; shared role-scoped audio activates through browser gestures and deduplicated notifications, so polling never repeats sounds.
+- Patient journals use append-only server-derived patient/doctor identity and timestamp through authenticated audited RPCs; verified assigned doctors can append during active or completed visits without reopening room access, and read the patient's cross-visit timeline. Doctor call completion opens this journal on the original dashboard.
 - Call text uses bounded Daily app messages; file bytes use a size/type-validated direct WebRTC data channel, never public storage, with no persistence and explicit network-failure feedback.
 - Live staff record reads use POST RPCs with transactional auditing; database permissions enforce verified-doctor assignment or admin access, and clinical writes retain caller identity for audit triggers.
 - Record and waiting-room routes require validated real account access through the shared account provider; public intake collects only an in-memory draft, and server-side roles and doctor verification remain the authorization boundary.
 - Booking intake and consent drafts stay in a shared memory-only provider, never browser storage or logs; drafts are validated before any future authenticated server submission and cleared on account changes. Approved booking return paths preserve sign-in continuity without external redirects.
-- Mock mode stays disabled, and retired test-queue RPCs and demo-call credentials remain inaccessible to app visitors.
+- The retired test queue stays inaccessible to app visitors. Old demo call requests receive HTTP 410 without room credentials.
 - Doctor applications use an authenticated bounded RPC, remain unverified with no doctor privileges until admin approval, and protect identity and licence details from self-editing.
 - Admin doctor creation treats duplicate emails as conflicts, never overwriting passwords or promoting existing accounts; existing accounts follow explicit application approval to prevent accidental account takeover.
 - Paid checkout stays disabled; a bounded patient-only RPC creates unpaid bookings with server-derived identity/consent, serializes duplicate submissions, and never accepts client payment fields.
-- Doctor sample workspace state lives only in memory and is shared across original dashboard/call navigation; never persist clinical drafts in browser storage or use sample state for real permissions.
-- Sample call statistics start on the meeting-joined event and finish on leaving, not on claiming a visit, to avoid reporting queue time as call duration.
+- Never persist clinical drafts in browser storage.
 - Medicine choices do not prefill doses or issue prescriptions; clinical fields are bounded, explicit draft inputs to avoid unchecked treatment recommendations.
-- Clinical notes and added medicines sync into the memory-only sample workspace on edit so closing panels does not discard documentation.
-
-- Share prejoin media acquisition and cleanup through one camera-check component; isolate sample waiting-room polling from authenticated subscriptions to keep sample pages off live records.
+- Share prejoin media acquisition and cleanup through one camera-check component.
 - Acquire prejoin camera and microphone independently; an unavailable device or optional audio meter must not discard the other working device.
 - Call details use a responsive drawer, and elapsed time starts on joining; status badges must reflect verified integrations rather than presentation claims.
 - Daily presentation adapts global CSS hex tokens because its iframe rejects HSL strings; keep call audio initially muted through the shared presentation options.

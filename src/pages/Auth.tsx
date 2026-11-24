@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertCircle, Shield, User } from "lucide-react";
@@ -12,12 +12,19 @@ import { useAccount } from "@/components/AccountProvider";
 import { accountDestination } from "@/lib/account-access";
 import { bookingReturnPath } from "@/lib/booking-intake";
 
+import { useBookingDraft } from "@/components/BookingDraftProvider";
+import BookingEmailCode from "@/components/BookingEmailCode";
+
 const Auth = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const isPatient = searchParams.get("as") !== "doctor";
   const signingUp = searchParams.get("mode") === "signup";
   const returnTo = bookingReturnPath(searchParams.get("returnTo"));
+  const { intake, clearDraft } = useBookingDraft();
+  const wantsCode = isPatient && returnTo === "/medical-reason" && searchParams.get("method") === "email-code";
+  const bookingEmail = intake?.email.toLowerCase();
   const updateParams = (values: Record<string, string>) =>
     setSearchParams({ ...values, ...(returnTo ? { returnTo } : {}) });
   const { user, access, loading: checking } = useAccount();
@@ -26,7 +33,7 @@ const Auth = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(returnTo === "/medical-reason" ? bookingEmail ?? "" : "");
   const [password, setPassword] = useState("");
 
   useEffect(() => {
@@ -34,6 +41,11 @@ const Auth = () => {
 
     if (isPatient) {
       if (access === "patient" || access === "pending") {
+        if (returnTo === "/medical-reason" && bookingEmail !== user.email?.toLowerCase()) {
+          clearDraft();
+          navigate("/registration", { replace: true });
+          return;
+        }
         navigate(returnTo || "/my-visits", { replace: true });
         return;
       }
@@ -57,7 +69,7 @@ const Auth = () => {
       navigate("/doctor/register", { replace: true });
       return;
     }
-  }, [user, access, checking, navigate, isPatient, returnTo]);
+  }, [user, access, checking, navigate, isPatient, returnTo, bookingEmail, clearDraft]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,9 +132,9 @@ const Auth = () => {
               {isPatient ? <User className="w-8 h-8 text-primary" /> : <Shield className="w-8 h-8 text-primary" />}
             </div>
             <h2 className="text-3xl font-bold mb-2">
-              {signingUp ? t("auth.create") : isPatient ? t("auth.patientTitle") : t("auth.title")}
+              {wantsCode ? t("bookingEmail.title") : signingUp ? t("auth.create") : isPatient ? t("auth.patientTitle") : t("auth.title")}
             </h2>
-            <p className="text-muted-foreground">{isPatient ? t("auth.patientSubtitle") : t("auth.subtitle")}</p>
+            <p className="text-muted-foreground">{wantsCode ? t("bookingEmail.hint") : isPatient ? t("auth.patientSubtitle") : t("auth.subtitle")}</p>
           </div>
 
           {/* Patient account attempting to access doctor portal */}
@@ -155,7 +167,20 @@ const Auth = () => {
             </div>
           ) : (
             <div className="bg-card p-8 rounded-xl border shadow-sm">
-              {sent ? (
+              {wantsCode ? (
+              bookingEmail ? (
+                <BookingEmailCode key={bookingEmail} email={bookingEmail}
+                  sentAt={typeof location.state?.sentAt === "number" ? location.state.sentAt : 0}
+                  sendFailed={location.state?.sendFailed === true}
+                  onEditEmail={() => navigate("/registration")}
+                  onPasswordLogin={() => updateParams({ as: "patient" })} />
+              ) : (
+                <div className="space-y-4">
+                  <p>{t("bookingEmail.expiredDraft")}</p>
+                  <Button asChild><Link to="/registration">{t("bookingEmail.backDetails")}</Link></Button>
+                </div>
+              )
+            ) : sent ? (
                 <div className="space-y-4">
                   <p role="status">{t("auth.confirmEmail")}</p>
                   <Button

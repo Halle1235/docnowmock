@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { intakeSchema } from "@/lib/booking-intake";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import BookingAvailability from "@/components/BookingAvailability";
+import { sendBookingCode } from "@/lib/booking-email";
 import * as CountryFlags from "country-flag-icons/react/3x2";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { bookingCountries, defaultBookingCountry, getCountryCallingCode, splitBookingPhone, type CountryCode } from "@/lib/booking-phone";
@@ -24,7 +25,7 @@ const CountryFlag = ({ country }: { country: CountryCode }) => {
 
 const Registration = () => {
   const navigate = useNavigate();
-  const { user, access } = useAccount();
+  const { user, access, loading: checkingAccount } = useAccount();
   const { intake, setIntake } = useBookingDraft();
   const [identityType, setIdentityType] = useState<"resident" | "visitor">(intake?.identity.type ?? "resident");
   const { toast } = useToast();
@@ -34,6 +35,8 @@ const Registration = () => {
   const [dateOfBirth, setDateOfBirth] = useState(intake?.dateOfBirth ?? "");
   const [email, setEmail] = useState(intake?.email ?? "");
   const [phone, setPhone] = useState(intake?.phone ?? "");
+  const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
   const [phoneCountry, setPhoneCountry] = useState<CountryCode>(intake?.country ?? defaultBookingCountry);
   const countryNames = new Intl.DisplayNames([i18n.language], { type: "region" });
   const countries = [...bookingCountries].sort((a, b) => (countryNames.of(a) ?? a).localeCompare(countryNames.of(b) ?? b, i18n.language));
@@ -53,15 +56,31 @@ const Registration = () => {
     });
     return () => { active = false; };
   }, [user?.id, access, intake]);
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (checkingAccount || sendingRef.current) return;
     const result = intakeSchema.safeParse({ fullName, email, phone, country: phoneCountry, dateOfBirth, identity: { type: identityType, number: passportNumber } });
     if (!result.success) {
       toast({ title: t('registration.fillAllFields'), description: result.error.issues[0]?.message, variant: "destructive" });
       return;
     }
     setIntake(result.data);
-    navigate("/medical-reason");
+    if (user) {
+      navigate("/medical-reason");
+      return;
+    }
+    sendingRef.current = true;
+    setSending(true);
+    const verificationPath = "/auth?as=patient&method=email-code&returnTo=%2Fmedical-reason";
+    try {
+      await sendBookingCode(result.data.email.toLowerCase());
+      navigate(verificationPath, { state: { sentAt: Date.now() } });
+    } catch {
+      navigate(verificationPath, { state: { sendFailed: true } });
+    } finally {
+      sendingRef.current = false;
+      setSending(false);
+    }
   };
 
   return (
@@ -214,11 +233,12 @@ const Registration = () => {
                 </p>
               </div>
 
-              <Button type="submit" className="w-full h-12 text-base" size="lg">
-                {t('registration.continueButton')}
+              <Button type="submit" className="w-full h-12 text-base" size="lg" disabled={checkingAccount || sending}>
+                {t(sending ? "bookingEmail.sending" : "registration.continueButton")}
               </Button>
             </form>
           </div>
+
 
         </div>
       </div>

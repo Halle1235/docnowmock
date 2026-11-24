@@ -4,12 +4,13 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, HeartPulse, ShieldCheck, Stethoscope, UserRound, Video } from "lucide-react";
+import { Camera, ChevronDown, HeartPulse, Stethoscope, UserRound, Video } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import PrejoinCameraCheck from "@/components/video/PrejoinCameraCheck";
 import BookingNotifications from "@/components/BookingNotifications";
 import { useBookingNotifications } from "@/hooks/use-booking-notifications";
 import { onForeground } from "@/lib/foreground";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface ConsultationData {
   id: string;
@@ -120,28 +121,84 @@ const WaitingRoom = () => {
   const doctor = queue?.doctor;
   const assigned = consultation.status === "claimed" || consultation.status === "in_progress";
   const status = ready ? "ready" : assigned ? "preparing" : "waiting";
-  return <div className="min-h-screen bg-lounge">
-    <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur"><div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2 sm:px-6"><div className="flex items-center gap-2 text-primary"><HeartPulse className="h-7 w-7" /><span className="text-xl font-bold">DocNow</span><span className="ms-3 hidden items-center gap-1 border-s ps-4 text-xs text-muted-foreground md:flex"><ShieldCheck className="h-4 w-4" />{t("lounge.patient")}</span></div><nav className="flex items-center gap-1"><BookingNotifications role="patient" /><Button variant="ghost" size="sm" onClick={() => navigate("/my-visits")}>{t("lounge.visits")}</Button><LanguageSwitcher /></nav></div></header>
-    <main className="mx-auto max-w-6xl px-4 py-7 sm:px-6 lg:py-10">
-      <Button variant="ghost" size="sm" className="mb-5 px-0" onClick={() => navigate("/my-visits")}><ArrowLeft className="me-2 h-4 w-4" />{t("lounge.back")}</Button>
-      <div className="mb-7"><p className="mb-2 text-sm font-medium text-primary">{t("lounge.yourVisit")}</p><h1 className="text-3xl font-semibold">{t("lounge.title")}</h1><p className="mt-2 text-sm text-muted-foreground">{t(ready ? "lounge.readyMessage" : assigned ? "lounge.preparingMessage" : "lounge.waitingMessage")}</p></div>
-      <div className="grid items-start gap-7 lg:grid-cols-12">
-        <section className="min-w-0 lg:col-span-7"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-semibold">{t("lounge.devices")}</h2><span className="text-xs text-muted-foreground">{t("lounge.before")}</span></div><PrejoinCameraCheck name={t("lounge.you")} /><div className="mt-6 flex gap-3 border-t pt-5 text-sm text-muted-foreground"><ShieldCheck className="h-5 w-5 shrink-0 text-primary" /><p>{t("lounge.preview")}</p></div></section>
-        <aside className="min-w-0 space-y-4 lg:col-span-5">
-          {consultation.payment_status === "pending" && <p role="status" className="border-l-4 border-primary bg-accent p-4 text-sm">{t("lounge.unpaid")}</p>}
-          <section className="flex items-center gap-4 rounded-lg border bg-card p-5"><Avatar className="h-16 w-16"><AvatarImage src={doctor?.avatar_url} alt={doctor?.full_name} /><AvatarFallback className="bg-accent text-primary"><Stethoscope className="h-7 w-7" /></AvatarFallback></Avatar><div className="min-w-0"><p className="mb-1 text-xs text-muted-foreground">{doctor ? t("lounge.doctor") : t("lounge.finding")}</p><h2 className="break-words text-lg font-semibold">{doctor?.full_name || t("lounge.next")}</h2><p className="text-sm text-muted-foreground">{doctor?.specialization || t("lounge.general")}</p></div></section>
-          <section className="space-y-3 rounded-lg border bg-card p-5">
-            <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{t("lounge.status")}</h2><span role="status" className={ready ? "text-sm text-success" : "text-sm text-muted-foreground"}>{t(`lounge.${status}`)}</span></div>
-            {!assigned && queue && Number.isInteger(queue.position) && queue.position > 0 && <p className="text-sm text-muted-foreground">{t("lounge.place")} <strong>#{queue.position}</strong></p>}
-            {!ready && <p className="text-sm text-muted-foreground">{t("lounge.backgroundHint")}</p>}
-            {error && <p role="status" className="text-sm text-destructive">{t(error)}</p>}
+  const statusMessage = ready ? "lounge.muted" : assigned ? "lounge.preparingMessage" : "lounge.backgroundHint";
+
+  return (
+    <div className="min-h-screen bg-lounge">
+      <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur">
+        <div className="mx-auto flex min-h-14 max-w-2xl flex-wrap items-center justify-between gap-1 px-4 py-2 sm:px-6">
+          <div className="flex items-center gap-2 text-primary">
+            <HeartPulse aria-hidden="true" className="h-6 w-6" />
+            <span className="text-xl font-bold">DocNow</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <BookingNotifications role="patient" />
+            <LanguageSwitcher />
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-2xl space-y-4 px-4 py-5 sm:px-6 sm:py-8">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="text-3xl font-semibold">{t("lounge.title")}</h1>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/my-visits")}>{t("lounge.visits")}</Button>
+        </div>
+
+        <section className={`space-y-4 rounded-xl border bg-card p-4 sm:p-5 ${ready ? "border-primary/40" : ""}`}>
+          <div role="status" className="space-y-1.5">
+            <h2 className="text-xl font-semibold">{t(`lounge.${status}`)}</h2>
+            <p className="text-sm text-muted-foreground">{t(statusMessage)}</p>
+            {!assigned && queue && Number.isInteger(queue.position) && queue.position > 0 && (
+              <p className="text-sm text-muted-foreground">{t("lounge.place")} <strong>#{queue.position}</strong></p>
+            )}
+            {!assigned && error && <p className="text-sm text-muted-foreground">{t(error)}</p>}
+          </div>
+          {ready && (
+            <Button className="h-12 w-full text-base" onClick={() => navigate(`/call/${id}`)}>
+              <Video aria-hidden="true" className="h-4 w-4" />
+              {t("lounge.join")}
+            </Button>
+          )}
+        </section>
+
+        <Collapsible key={consultation.id} className="rounded-xl border bg-card">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="group h-auto min-h-11 w-full justify-start whitespace-normal px-4 py-2 text-start">
+              <Camera aria-hidden="true" />
+              {t("lounge.testDevices")}
+              <ChevronDown aria-hidden="true" className="ms-auto transition-transform group-data-[state=open]:rotate-180" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="border-t p-3 sm:p-4">
+            <PrejoinCameraCheck name={t("lounge.you")} />
+          </CollapsibleContent>
+        </Collapsible>
+
+        {doctor && assigned && (
+          <section className="flex items-center gap-3 rounded-xl border bg-card p-4">
+            <Avatar className="h-12 w-12">
+              <AvatarImage src={doctor.avatar_url} alt="" />
+              <AvatarFallback className="bg-accent text-primary"><Stethoscope aria-hidden="true" className="h-6 w-6" /></AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <h2 className="text-sm text-muted-foreground">{t("lounge.doctor")}</h2>
+              <p className="break-words font-semibold">{doctor.full_name}</p>
+              {doctor.specialization && <p className="break-words text-sm text-muted-foreground">{doctor.specialization}</p>}
+            </div>
           </section>
-          <section className="rounded-lg border bg-card p-5"><h2 className="mb-3 flex items-center gap-2 font-semibold"><UserRound className="h-4 w-4 text-primary" />{t("lounge.reason")}</h2><p className="break-words text-sm text-muted-foreground">{consultation.reason_description || t("lounge.general")}</p></section>
-          <Button className="h-12 w-full gap-2 rounded-xl font-semibold shadow-md" disabled={!ready} onClick={() => navigate(`/call/${id}`)}><Video className="h-4 w-4" />{t("lounge.join")}<ArrowRight className="ms-auto h-4 w-4" /></Button><p className="text-center text-xs text-muted-foreground">{t(ready ? "lounge.muted" : "lounge.instructions")}</p>
-        </aside>
-      </div>
-    </main>
-  </div>;
+        )}
+
+        <section className="rounded-xl border bg-card p-4">
+          <h2 className="mb-2 flex items-center gap-2 font-semibold">
+            <UserRound aria-hidden="true" className="h-4 w-4 text-primary" />
+            {t("lounge.reason")}
+          </h2>
+          <p className="break-words text-sm text-muted-foreground">{consultation.reason_description || t("lounge.general")}</p>
+        </section>
+        {consultation.payment_status === "pending" && <p className="px-1 text-sm text-muted-foreground">{t("lounge.unpaid")}</p>}
+      </main>
+    </div>
+  );
 };
 
 export default WaitingRoom;

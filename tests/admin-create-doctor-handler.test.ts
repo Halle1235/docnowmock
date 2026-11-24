@@ -6,7 +6,7 @@ import ts from "typescript";
 import { z } from "zod";
 
 const source = readFileSync(new URL("../supabase/functions/admin-create-doctor/index.ts", import.meta.url), "utf8")
-  .replace(/^import .*;\n/gm, "");
+  .replace(/^import [^\n]*\n/gm, "");
 const compiled = ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
 }).outputText;
@@ -32,9 +32,9 @@ async function invoke(options: { code?: string; message?: string; admin?: boolea
       update: async () => { writes.push("update"); },
     }),
   };
-  new Function("Deno", "createClient", "corsHeaders", "z", compiled)(
+  new Function("Deno", "createClient", "z", compiled)(
     { env: { get: () => "synthetic-only" }, serve: (fn: typeof handler) => { handler = fn; } },
-    () => client, {}, z,
+    () => client, z,
   );
   assert.ok(handler);
   const response = await handler(new Request("https://app.invalid/admin-create-doctor", {
