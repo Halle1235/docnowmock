@@ -259,6 +259,8 @@
     "visitor": "سائح / زائر",
     "emiratesId": "الهوية الإماراتية",
     "backToIntake": "العودة إلى بيانات المريض",
+    "editDetails": "مراجعة بيانات المريض أو تعديلها",
+    "checkingDetails": "جارٍ التحقق من بيانات المريض…",
     "optional": "اختياري"
   },
   "medicalReason": {

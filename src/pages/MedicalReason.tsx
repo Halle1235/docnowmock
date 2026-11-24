@@ -202,8 +202,8 @@ const MedicalReason = () => {
               ))}
             </div>
 
-            <Button variant="ghost" onClick={() => navigate("/registration")}>
-              {t("registration.backToIntake")}
+            <Button variant="ghost" onClick={() => navigate("/registration?edit=1")}>
+              {t("registration.editDetails")}
             </Button>
             <Button onClick={handleSubmit} className="w-full" size="lg">
               {t("medicalReason.continueButton")}
