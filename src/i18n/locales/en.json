@@ -556,6 +556,9 @@
     "cancelConflict": "This booking can no longer be cancelled here. Check its current status.",
     "cancelError": "Couldn’t cancel the booking. Please try again.",
     "followUp": "Follow-up instructions",
+    "nextStep": "What to do next",
+    "recommendFollowUp": "Recommend booking a follow-up",
+    "nextStepRequired": "Write the follow-up instructions before saving.",
     "bookFollowUp": "Book a follow-up"
   },
   "lounge": {

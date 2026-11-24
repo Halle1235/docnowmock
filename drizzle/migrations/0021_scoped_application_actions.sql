@@ -114,9 +114,11 @@ BEGIN
     RAISE EXCEPTION 'Invalid summary fields' USING ERRCODE = '22023';
   END IF;
   IF EXISTS (SELECT 1 FROM jsonb_object_keys(_summary) key
-      WHERE key NOT IN ('overview','diagnosis','treatment_plan','medications','self_care','warning_signs','follow_up'))
+      WHERE key NOT IN ('overview','diagnosis','treatment_plan','medications','self_care','warning_signs','follow_up','follow_up_recommended'))
      OR jsonb_typeof(_summary->'diagnosis') IS DISTINCT FROM 'string'
      OR jsonb_typeof(_summary->'follow_up') IS DISTINCT FROM 'string'
+     OR (_summary ? 'follow_up_recommended' AND jsonb_typeof(_summary->'follow_up_recommended') IS DISTINCT FROM 'boolean')
+     OR (_summary->'follow_up_recommended' = 'true'::jsonb AND btrim(_summary->>'follow_up') = '')
      OR length(_summary->>'diagnosis') > 1000 OR length(_summary->>'follow_up') > 1000 THEN
     RAISE EXCEPTION 'Invalid summary text' USING ERRCODE = '22023';
   END IF;
