@@ -127,6 +127,27 @@
       "when": 1795478403000,
       "tag": "0020_remove_ai_visit_summary",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795478404000,
+      "tag": "0021_scoped_application_actions",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795478405000,
+      "tag": "0022_bound_video_rooms",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "when": 1795478406000,
+      "version": "7",
+      "tag": "0023_scope_role_lookup",
+      "breakpoints": true
     }
   ]
 }

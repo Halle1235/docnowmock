@@ -154,11 +154,6 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
 
     setSaving(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
       const medList = medications
         .split("\n")
         .map((s) => s.trim())
@@ -187,42 +182,24 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
         follow_up: followUp.trim(),
       };
 
-      const { error } = await supabase
-        .from("consultations")
-        .update({
-          notes: notes.trim(),
-          visit_summary: summaryObj as unknown as Json,
-          visit_summary_approved_at: new Date().toISOString(),
-          visit_summary_approved_by: user.id,
-        })
-        .eq("id", consultationId)
-        .select("id")
-        .single();
+      const journalTreatment = [
+        treatmentPlan.trim() ? `Plan: ${treatmentPlan.trim()}` : "",
+        medications.trim() ? `Medications: ${medications.trim()}` : "",
+        selfCare.trim() ? `Self-care: ${selfCare.trim()}` : "",
+      ].filter(Boolean).join("\n\n");
 
-      if (error) throw error;
-
-      // Automatically sync clinical findings to patient journal timeline
-      if (notes.trim()) {
-        try {
-          const treatmentCombined = [
-            treatmentPlan.trim() ? `Plan: ${treatmentPlan.trim()}` : "",
-            medications.trim() ? `Medications: ${medications.trim()}` : "",
-            selfCare.trim() ? `Self-care: ${selfCare.trim()}` : "",
-          ]
-            .filter(Boolean)
-            .join("\n\n");
-
-          const { error: journalError } = await supabase.rpc("add_patient_journal_entry", {
-            _consultation_id: consultationId,
-            _diagnosis: diagnosis.trim(),
-            _treatment: treatmentCombined,
-            _notes: notes.trim(),
-          });
-          if (journalError) throw journalError;
-        } catch {
-          toast.warning("The summary was saved, but the journal entry could not be added.");
-        }
+      if (journalTreatment.length > 4000) {
+        toast.error("Keep the combined treatment, medications, and recovery guidance under 4,000 characters.");
+        return;
       }
+
+      const { error } = await supabase.rpc("save_assigned_visit_summary", {
+        _consultation_id: consultationId,
+        _notes: notes.trim(),
+        _summary: summaryObj as unknown as Json,
+        _journal_treatment: journalTreatment,
+      });
+      if (error) throw error;
 
       setSummary(summaryObj);
       setApproved(true);

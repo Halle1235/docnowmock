@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import PatientInformation from "./pages/PatientInformation";
+import PatientInformation, { showLegalDrafts } from "./pages/PatientInformation";
 import Index from "./pages/Index";
 import Registration from "./pages/Registration";
 import MedicalReason from "./pages/MedicalReason";
@@ -32,8 +32,10 @@ const App = () => (
         <AccountProvider>
         <BookingDraftProvider>
         <Routes>
-          <Route path={routes.privacy} element={<PatientInformation kind="privacy" />} />
-          <Route path={routes.terms} element={<PatientInformation kind="terms" />} />
+          {showLegalDrafts && <>
+            <Route path={routes.privacy} element={<PatientInformation kind="privacy" />} />
+            <Route path={routes.terms} element={<PatientInformation kind="terms" />} />
+          </>}
           <Route path={routes.home} element={<Index />} />
           <Route path={routes.registration} element={<Registration />} />
           <Route path={routes.medicalReason} element={<RequireAccount role="patient"><MedicalReason /></RequireAccount>} />
