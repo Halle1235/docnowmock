@@ -60,12 +60,9 @@ export default function Index() {
           <div className="container mx-auto grid max-w-6xl items-center gap-7 px-4 lg:grid-cols-2 lg:gap-14">
             <div className="text-center lg:text-start">
               <BookingAvailability />
-              <h1 className="mb-3 text-4xl font-bold leading-tight tracking-tight text-foreground lg:text-5xl">
+              <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-foreground lg:text-5xl">
                 {t("hero.title")}
               </h1>
-              <p className="mx-auto mb-5 max-w-md text-base leading-relaxed text-muted-foreground lg:mx-0 lg:text-lg">
-                {t("hero.subtitle")}
-              </p>
               <Button asChild size="lg" className="h-auto min-h-11 w-full px-5 py-2.5 text-base sm:w-auto">
                 <Link to="/registration">
                   <Video aria-hidden="true" />

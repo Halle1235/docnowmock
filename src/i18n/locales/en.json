@@ -20,8 +20,7 @@
     "showAll": "Show all my records"
   },
   "hero": {
-    "title": "Online doctor visits in the UAE",
-    "subtitle": "Request a video visit and join when your doctor is ready.",
+    "title": "Meet doctors directly via video",
     "bookButton": "Book a video visit",
     "bookingFee": "Listed fee AED {{amount}}. No payment at booking."
   },
