@@ -243,6 +243,8 @@
     "visitor": "Tourist / Visitor",
     "emiratesId": "Emirates ID",
     "backToIntake": "Back to patient details",
+    "editDetails": "Review or edit patient details",
+    "checkingDetails": "Checking your patient details…",
     "optional": "optional"
   },
   "medicalReason": {

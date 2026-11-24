@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ShieldCheck, TriangleAlert, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -26,6 +26,8 @@ const CountryFlag = ({ country }: { country: CountryCode }) => {
 
 const Registration = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const editDetails = new URLSearchParams(location.search).get("edit") === "1";
   const { user, access, loading: checkingAccount } = useAccount();
   const { intake, setIntake } = useBookingDraft();
   const [identityType, setIdentityType] = useState<"resident" | "visitor">(intake?.identity.type ?? "resident");
@@ -37,27 +39,43 @@ const Registration = () => {
   const [email, setEmail] = useState(intake?.email ?? "");
   const [phone, setPhone] = useState(intake?.phone ?? "");
   const [sending, setSending] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
   const sendingRef = useRef(false);
   const [phoneCountry, setPhoneCountry] = useState<CountryCode>(intake?.country ?? defaultBookingCountry);
   const countryNames = new Intl.DisplayNames([i18n.language], { type: "region" });
   const countries = [...bookingCountries].sort((a, b) => (countryNames.of(a) ?? a).localeCompare(countryNames.of(b) ?? b, i18n.language));
 
   useEffect(() => {
-    if (intake || !user || access !== "patient") return;
+    if (checkingAccount) return;
+    if (intake || !user || (access !== "patient" && access !== "pending")) {
+      setLoadingProfile(false);
+      return;
+    }
     setEmail(user.email || "");
     let active = true;
+    setLoadingProfile(true);
     void supabase.rpc("my_booking_profile").then(({ data: profile }) => {
       if (!active || !profile) return;
       const data = profile as Record<"full_name" | "phone" | "passport_number" | "date_of_birth" | "identification_type" | "emirates_id" | "contact_email", string | null>;
       const contact = splitBookingPhone(data.phone || "");
-      setFullName(data.full_name); setPhone(contact.national); setPhoneCountry(contact.country);
-      setEmail(data.contact_email || user.email || "");
+      setFullName(data.full_name || ""); setPhone(contact.national); setPhoneCountry(contact.country);
+      const bookingEmail = data.contact_email || user.email || "";
+      setEmail(bookingEmail);
       const identity = data.identification_type === 'resident' ? data.emirates_id || '' : data.passport_number || "";
-      setPassportNumber(identity); setIdentityType(data.identification_type === 'resident' || /^784-/.test(identity) ? "resident" : identity ? "visitor" : "resident");
-      setDateOfBirth(/^\d{4}-\d{2}-\d{2}$/.test(data.date_of_birth || "") ? data.date_of_birth || "" : "");
-    });
+      const bookingIdentity = data.identification_type === 'resident' || /^784-/.test(identity) ? "resident" : identity ? "visitor" : "resident";
+      const birth = /^\d{4}-\d{2}-\d{2}$/.test(data.date_of_birth || "") ? data.date_of_birth || "" : "";
+      setPassportNumber(identity); setIdentityType(bookingIdentity);
+      setDateOfBirth(birth);
+      const parsed = intakeSchema.safeParse({ fullName: data.full_name || "", email: bookingEmail,
+        phone: contact.national, country: contact.country, dateOfBirth: birth,
+        identity: { type: bookingIdentity, number: identity } });
+      if (parsed.success && !editDetails) {
+        setIntake(parsed.data);
+        navigate("/medical-reason", { replace: true });
+      }
+    }).then(() => { if (active) setLoadingProfile(false); }, () => { if (active) setLoadingProfile(false); });
     return () => { active = false; };
-  }, [user?.id, access, intake]);
+  }, [user?.id, access, checkingAccount, intake, editDetails, navigate, setIntake]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (checkingAccount || sendingRef.current) return;
@@ -88,6 +106,10 @@ const Registration = () => {
       setSending(false);
     }
   };
+
+  if (checkingAccount || loadingProfile) {
+    return <div className="min-h-screen grid place-items-center bg-background text-muted-foreground" role="status">{t("registration.checkingDetails")}</div>;
+  }
 
   return (
     <div className="min-h-screen bg-background">
