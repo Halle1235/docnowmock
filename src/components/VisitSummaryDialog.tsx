@@ -230,7 +230,7 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5 text-xs">
           <FileText className="h-3.5 w-3.5 text-primary" />
-          {initialSummary ? "View summary" : "Notes & summary"}
+          {t(initialSummary ? "dashboard.viewSummary" : "dashboard.editSummary")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

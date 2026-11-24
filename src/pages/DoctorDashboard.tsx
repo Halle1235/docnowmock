@@ -63,7 +63,7 @@ const LiveDoctorDashboard = () => {
   const [userEmail, setUserEmail] = useState("");
   const [doctorInfo, setDoctorInfo] = useState({
     fullName: "Doctor",
-    specialization: "General Practice & Telehealth",
+    specialization: "",
     licenseNumber: "",
     isAvailable: null as boolean | null,
   });
@@ -110,8 +110,8 @@ const LiveDoctorDashboard = () => {
 
     if (error || !data) {
       toast({
-        title: "Access denied",
-        description: "Your doctor account has not been approved by an administrator yet.",
+        title: t("dashboard.accessDenied"),
+        description: t("dashboard.approvalRequired"),
         variant: "destructive",
       });
       setLoading(false);
@@ -120,8 +120,8 @@ const LiveDoctorDashboard = () => {
 
     const details = data as { full_name?: string; specialization?: string; license_number?: string; is_available?: boolean };
     setDoctorInfo({
-      fullName: details.full_name || user.email?.split("@")[0] || "Doctor",
-      specialization: details.specialization || "Telehealth Practitioner",
+      fullName: details.full_name || user.email?.split("@")[0] || t("dashboard.doctorFallback"),
+      specialization: details.specialization || "",
       licenseNumber: details.license_number || "",
       isAvailable: details.is_available ?? null,
     });
@@ -181,10 +181,10 @@ const LiveDoctorDashboard = () => {
       loadConsultations();
     } catch (error: any) {
       toast({
-        title: error.code === "40001" ? "Consultation already taken" : t("dashboard.couldNotAssign"),
+        title: error.code === "40001" ? t("dashboard.alreadyTaken") : t("dashboard.couldNotAssign"),
         description:
           error.code === "40001"
-            ? "Another doctor has taken this booking. The queue has been refreshed."
+            ? t("dashboard.alreadyTakenDesc")
             : error.message,
         variant: "destructive",
       });
@@ -272,7 +272,10 @@ const LiveDoctorDashboard = () => {
     });
   }, [myConsultations, activeTab, historySearch]);
 
-  const todayFormatted = new Intl.DateTimeFormat(undefined, {
+  const locale = i18n.language === "ar" ? "ar-AE" : "en-AE";
+  const timeZone = "Asia/Dubai";
+  const todayFormatted = new Intl.DateTimeFormat(locale, {
+    timeZone,
     weekday: "long",
     month: "short",
     day: "numeric",
@@ -302,7 +305,7 @@ const LiveDoctorDashboard = () => {
             <div>
               <span className="text-xl font-bold tracking-tight text-primary">DocNow</span>
               <Badge variant="outline" className="ms-2 border-primary/20 text-xs text-primary font-medium">
-                Doctor Portal
+                {t("header.doctorPortal")}
               </Badge>
             </div>
           </div>
@@ -338,13 +341,13 @@ const LiveDoctorDashboard = () => {
               </Avatar>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <h1 className="min-w-0 text-2xl font-bold tracking-tight [overflow-wrap:anywhere]">Dr. {doctorInfo.fullName}</h1>
+                  <h1 className="min-w-0 text-2xl font-bold tracking-tight [overflow-wrap:anywhere]">{t("dashboard.doctorName", { name: doctorInfo.fullName })}</h1>
                   <Badge variant={doctorInfo.isAvailable ? "default" : "secondary"}>
                     {t(doctorInfo.isAvailable === null ? "availability.unknown" : doctorInfo.isAvailable ? "availability.accepting" : "availability.paused")}
                   </Badge>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground [overflow-wrap:anywhere] sm:text-sm">
-                  {doctorInfo.specialization}{doctorInfo.licenseNumber && ` · ${doctorInfo.licenseNumber}`}
+                  {doctorInfo.specialization || t("dashboard.telehealthPractitioner")}{doctorInfo.licenseNumber && ` · ${doctorInfo.licenseNumber}`}
                 </p>
               </div>
             </div>
@@ -358,12 +361,12 @@ const LiveDoctorDashboard = () => {
                   className="h-7 w-7 ms-2"
                   onClick={() => loadConsultations(true)}
                   disabled={refreshing}
-                  title="Refresh queue"
+                  title={t("dashboard.refreshQueue")} aria-label={t("dashboard.refreshQueue")}
                 >
                   <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
                 </Button>
               </div>
-              <span className="text-[11px] mt-0.5">Dubai, United Arab Emirates (GST)</span>
+              <span className="text-[11px] mt-0.5">{t("dashboard.uaeLocation")}</span>
             </div>
           </div>
           <Button variant="outline" size="sm" className="mt-3" disabled={availability.isPending}
@@ -399,11 +402,11 @@ const LiveDoctorDashboard = () => {
             <div className="mt-3 flex items-baseline gap-2">
               <span className="text-3xl font-bold tracking-tight">{pendingConsultations.length}</span>
               <span className="text-[11px] text-muted-foreground">
-                {pendingConsultations.length === 1 ? "patient" : "patients"}
+                {t("dashboard.patientsCount", { count: pendingConsultations.length })}
               </span>
             </div>
             <p className="mt-1 text-[11px] text-muted-foreground truncate">
-              {pendingConsultations.length > 0 ? "Requires doctor attention" : "Queue is clear"}
+              {t(pendingConsultations.length > 0 ? "dashboard.requiresAttention" : "dashboard.queueClearShort")}
             </p>
           </Card>
 
@@ -430,11 +433,11 @@ const LiveDoctorDashboard = () => {
             <div className="mt-3 flex items-baseline gap-2">
               <span className="text-3xl font-bold tracking-tight">{activeConsultations.length}</span>
               <span className="text-[11px] text-muted-foreground">
-                {activeConsultations.length === 1 ? "active call" : "active calls"}
+                {t("dashboard.activeCallsCount", { count: activeConsultations.length })}
               </span>
             </div>
             <p className="mt-1 text-[11px] text-muted-foreground truncate">
-              {activeConsultations.length > 0 ? "Call ready to join" : "No active calls"}
+              {t(activeConsultations.length > 0 ? "dashboard.callReadyToJoin" : "dashboard.noActiveCalls")}
             </p>
           </Card>
 
@@ -448,9 +451,9 @@ const LiveDoctorDashboard = () => {
             </div>
             <div className="mt-3 flex items-baseline gap-2">
               <span className="text-3xl font-bold tracking-tight">{completedConsultations.length}</span>
-              <span className="text-[11px] text-muted-foreground">visits</span>
+              <span className="text-[11px] text-muted-foreground">{t("dashboard.visitsCount", { count: completedConsultations.length })}</span>
             </div>
-            <p className="mt-1 text-[11px] text-muted-foreground truncate">Documented in journal</p>
+            <p className="mt-1 text-[11px] text-muted-foreground truncate">{t("dashboard.documentedInJournal")}</p>
           </Card>
 
           {/* 4. Total Consultations */}
@@ -465,9 +468,9 @@ const LiveDoctorDashboard = () => {
             </div>
             <div className="mt-3 flex items-baseline gap-2">
               <span className="text-3xl font-bold tracking-tight">{myConsultations.length}</span>
-              <span className="text-[11px] text-muted-foreground">records</span>
+              <span className="text-[11px] text-muted-foreground">{t("dashboard.recordsCount", { count: myConsultations.length })}</span>
             </div>
-            <p className="mt-1 text-[11px] text-muted-foreground truncate">All assigned consultations</p>
+            <p className="mt-1 text-[11px] text-muted-foreground truncate">{t("dashboard.allAssignedConsultations")}</p>
           </Card>
         </div>
 
@@ -481,7 +484,7 @@ const LiveDoctorDashboard = () => {
               </h2>
               {pendingConsultations.length > 0 && (
                 <Badge variant="outline" className="border-amber-500/30 text-amber-600 bg-amber-500/10 text-xs">
-                  Action required
+                  {t("dashboard.actionRequired")}
                 </Badge>
               )}
             </div>
@@ -500,7 +503,7 @@ const LiveDoctorDashboard = () => {
                 </p>
                 <div className="mt-4 flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Real-time queue listener active</span>
+                  <span>{t("dashboard.queueListenerActive")}</span>
                 </div>
               </Card>
             ) : (
@@ -531,7 +534,7 @@ const LiveDoctorDashboard = () => {
                             variant="outline"
                             className="border-amber-500/30 text-amber-600 bg-amber-500/10 ms-auto sm:ms-2 text-xs"
                           >
-                            Waiting
+                            {t("dashboard.inQueue")}
                           </Badge>
                         </div>
 
@@ -550,12 +553,13 @@ const LiveDoctorDashboard = () => {
 
                         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                           <span>
-                            {t("dashboard.payment")}: {consultation.payment_amount} AED
+                            {t("dashboard.payment")}: {new Intl.NumberFormat(locale, { style: "currency", currency: "AED" }).format(consultation.payment_amount)}
                           </span>
                           <span>•</span>
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {new Date(consultation.created_at).toLocaleTimeString([], {
+                            {new Date(consultation.created_at).toLocaleTimeString(locale, {
+                              timeZone,
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
@@ -644,7 +648,7 @@ const LiveDoctorDashboard = () => {
                     onClick={() => setHistorySearch("")}
                     className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
                   >
-                    Clear
+                    {t("dashboard.clearSearch")}
                   </button>
                 )}
               </div>
@@ -653,7 +657,7 @@ const LiveDoctorDashboard = () => {
             {filteredConsultations.length === 0 ? (
               <Card className="p-8 text-center bg-card">
                 <p className="text-muted-foreground text-sm">
-                  {historySearch ? "No consultations match your search." : t("dashboard.noAssigned")}
+                  {historySearch ? t("dashboard.noSearchResults") : t("dashboard.noAssigned")}
                 </p>
               </Card>
             ) : (
@@ -697,7 +701,7 @@ const LiveDoctorDashboard = () => {
 
                         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                           <span>
-                            {t("dashboard.payment")}: {consultation.payment_amount} AED
+                            {t("dashboard.payment")}: {new Intl.NumberFormat(locale, { style: "currency", currency: "AED" }).format(consultation.payment_amount)}
                           </span>
                           {consultation.payment_status === "pending" && (
                             <Badge variant="outline" className="text-[10px]">
@@ -706,7 +710,8 @@ const LiveDoctorDashboard = () => {
                           )}
                           <span>•</span>
                           <span>
-                            {new Date(consultation.created_at).toLocaleString([], {
+                            {new Date(consultation.created_at).toLocaleString(locale, {
+                              timeZone,
                               dateStyle: "medium",
                               timeStyle: "short",
                             })}
@@ -734,7 +739,7 @@ const LiveDoctorDashboard = () => {
                           onClick={() => setJournalId(consultation.id)}
                         >
                           <BookOpen className="h-3.5 w-3.5 text-primary" />
-                          Patient journal
+                          {t("dashboard.patientJournalButton")}
                         </Button>
                         <VisitSummaryDialog
                           consultationId={consultation.id}
@@ -764,7 +769,7 @@ const LiveDoctorDashboard = () => {
           aria-describedby={undefined}
         >
           <DialogHeader>
-            <DialogTitle>Patient medical journal</DialogTitle>
+            <DialogTitle>{t("dashboard.patientJournalModalTitle")}</DialogTitle>
           </DialogHeader>
           {journalId && (
             <PatientJournal
