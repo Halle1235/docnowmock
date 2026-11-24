@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Search, ShieldCheck, UserCog, BadgeCheck, UserPlus, LogOut, Pencil, Save } from "lucide-react";
+import { Loader2, Search, ShieldCheck, UserCog, BadgeCheck, UserPlus, LogOut, Pencil, Save, MessageSquare } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { adminVisitFeedback, type VisitFeedback } from "@/lib/visit-feedback";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -34,6 +36,7 @@ interface DoctorProfile {
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t, i18n } = useTranslation();
 
   const { user } = useAccount();
   const currentUserId = user?.id;
@@ -49,6 +52,21 @@ const AdminDashboard = () => {
   const [editing, setEditing] = useState<Profile | null>(null);
   const [saving, setSaving] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [feedback, setFeedback] = useState<VisitFeedback[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(true);
+  const [feedbackError, setFeedbackError] = useState(false);
+
+  const loadFeedback = async () => {
+    setFeedbackLoading(true);
+    try {
+      setFeedback(await adminVisitFeedback());
+      setFeedbackError(false);
+    } catch {
+      setFeedbackError(true);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
 
   const signOut = async () => {
     setSigningOut(true);
@@ -117,7 +135,11 @@ const AdminDashboard = () => {
     setRoles([]);
     setDoctorProfiles([]);
     setCleanupWithoutProfile([]);
-    if (currentUserId) void loadData();
+    setFeedback([]);
+    if (currentUserId) {
+      void loadData();
+      void loadFeedback();
+    }
     // The account boundary unmounts the portal when access changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId]);
@@ -274,6 +296,30 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         )}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2 text-base"><MessageSquare className="h-4 w-4 text-primary" />{t("feedback.adminTitle")}</CardTitle>
+            <Button type="button" variant="outline" size="sm" disabled={feedbackLoading} onClick={() => void loadFeedback()}>{t("feedback.refresh")}</Button>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">{t("feedback.adminHint")}</p>
+            {feedbackLoading ? <p role="status" className="text-sm">{t("feedback.loading")}</p>
+              : feedbackError ? <p role="alert" className="text-sm">{t("feedback.loadError")}</p>
+              : feedback.length === 0 ? <p className="text-sm text-muted-foreground">{t("feedback.empty")}</p>
+              : feedback.map(item => <div key={item.consultation_id} className="space-y-2 rounded-lg border p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium">{item.doctor_name || t("feedback.unknownDoctor")}</p>
+                    <time className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" })}</time>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    <Badge variant={item.doctor_rating <= 2 ? "destructive" : "secondary"}>{t("feedback.doctor")}: {item.doctor_rating}/5</Badge>
+                    <Badge variant={item.video_rating <= 2 ? "destructive" : "secondary"}>{t("feedback.video")}: {item.video_rating}/5</Badge>
+                  </div>
+                  {item.comment && <p className="whitespace-pre-wrap break-words text-sm">{item.comment}</p>}
+                  <p className="text-xs text-muted-foreground">{t("feedback.visitId")}: {item.consultation_id}</p>
+                </div>)}
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <CardTitle className="flex items-center gap-2 text-base">

@@ -555,6 +555,27 @@
     "removeRole": "Remove {{role}}",
     "selfNotice": "You cannot change your own roles. Ask another administrator if needed."
   },
+  "feedback": {
+    "title": "How was your visit?",
+    "privateHint": "Private feedback for the DocNow admin team. It is linked to this visit and will not appear on doctor profiles.",
+    "doctor": "Doctor experience",
+    "video": "Video call quality",
+    "ratingLabel": "{{count}} out of 5",
+    "comment": "Anything we should know? (optional)",
+    "commentHint": "Please avoid medical details in this feedback.",
+    "submit": "Send feedback",
+    "saving": "Sending…",
+    "thanks": "Thank you. Your feedback was sent privately to the DocNow team.",
+    "error": "Could not send feedback. Please try again.",
+    "adminTitle": "Private visit feedback",
+    "adminHint": "Recent completed visits only. Feedback is linked to a visit and is not anonymous.",
+    "refresh": "Refresh",
+    "loading": "Loading feedback…",
+    "loadError": "Feedback is unavailable. Try refreshing.",
+    "empty": "No feedback yet.",
+    "unknownDoctor": "Doctor",
+    "visitId": "Visit ID"
+  },
   "history": {
     "unavailable": "We couldn’t load your visits.",
     "retry": "Retry",

@@ -8,6 +8,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { SummaryView, VisitSummary } from "@/components/VisitSummaryDialog";
 import PatientJournal from "@/components/PatientJournal";
+import VisitFeedbackCard from "@/components/VisitFeedbackCard";
+import { myVisitFeedback } from "@/lib/visit-feedback";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import {
@@ -69,6 +71,8 @@ const LiveMyVisits = () => {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [feedbackByVisit, setFeedbackByVisit] = useState<Set<string>>(new Set());
+  const [feedbackAvailable, setFeedbackAvailable] = useState(false);
 
   useBookingNotifications("patient", visits, !loading && !failed);
 
@@ -99,6 +103,14 @@ const LiveMyVisits = () => {
     setVisits([]);
     setPatientName("");
     setPatientEmail(user?.email || "");
+    setFeedbackByVisit(new Set());
+    setFeedbackAvailable(false);
+    void myVisitFeedback().then(items => {
+      if (active) {
+        setFeedbackByVisit(new Set(items.map(item => item.consultation_id)));
+        setFeedbackAvailable(true);
+      }
+    }).catch(() => { if (active) setFeedbackAvailable(false); });
     void supabase.rpc("my_display_name").then(({ data }) => {
       if (active && data) setPatientName(data);
     });
@@ -372,6 +384,11 @@ const LiveMyVisits = () => {
                           ? "Your doctor completed this consultation. Notes are documented in your medical journal."
                           : "Consultation notes will appear here once reviewed by your doctor."}
                       </div>
+                    )}
+
+                    {v.status === "completed" && feedbackAvailable && (
+                      <VisitFeedbackCard visitId={v.id} submitted={feedbackByVisit.has(v.id)}
+                        onSubmitted={() => setFeedbackByVisit(current => new Set(current).add(v.id))} />
                     )}
 
                     {/* Action row */}
