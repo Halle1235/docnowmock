@@ -16,3 +16,15 @@ verify_jwt = false
 
 [functions.send-visit-ready-emails]
 verify_jwt = false
+
+[functions.admin-create-doctor]
+verify_jwt = true
+
+[functions.create-daily-room]
+verify_jwt = true
+
+[functions.revoke-call-access]
+verify_jwt = true
+
+[functions.generate-visit-summary]
+verify_jwt = false
