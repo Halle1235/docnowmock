@@ -112,22 +112,39 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<"edit" | "preview">(initialSummary ? "preview" : "edit");
 
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "failed">("loading");
+  const [attempt, setAttempt] = useState(0);
+  const [warnings, setWarnings] = useState("");
+
   useEffect(() => {
-    if (initialSummary) {
-      setSummary(initialSummary);
-      setApproved(true);
-      setDiagnosis(initialSummary.diagnosis || "");
-      setNotes(initialNotes || initialSummary.overview || "");
-      setTreatmentPlan(initialSummary.treatment_plan?.join("\n") || "");
-      setMedications(
-        initialSummary.medications
-          ?.map((m) => (m.instructions ? `${m.name} — ${m.instructions}` : m.name))
-          .join("\n") || "",
-      );
-      setSelfCare(initialSummary.self_care?.join("\n") || "");
-      setFollowUp(initialSummary.follow_up || "");
+    if (!open) return;
+    let active = true;
+    setLoadState("loading");
+    async function load() {
+      try {
+        const { data, error } = await supabase.rpc("get_assigned_visit_summary", { _consultation_id: consultationId });
+        if (!active) return;
+        if (error || !data) throw new Error();
+        const record = data as unknown as { notes: string | null; summary: VisitSummary | null };
+        const saved = record.summary;
+        setSummary(saved);
+        setApproved(!!saved);
+        setViewMode(saved ? "preview" : "edit");
+        setNotes(record.notes ?? saved?.overview ?? "");
+        setDiagnosis(saved?.diagnosis ?? "");
+        setTreatmentPlan(saved?.treatment_plan?.join("\n") ?? "");
+        setMedications(saved?.medications?.map(m => [m.name, m.instructions].filter(Boolean).join(" — ")).join("\n") ?? "");
+        setSelfCare(saved?.self_care?.join("\n") ?? "");
+        setWarnings(saved?.warning_signs?.join("\n") ?? "");
+        setFollowUp(saved?.follow_up ?? "");
+        setLoadState("ready");
+      } catch {
+        if (active) setLoadState("failed");
+      }
     }
-  }, [initialSummary, initialNotes]);
+    void load();
+    return () => { active = false; };
+  }, [open, consultationId, attempt]);
 
   const saveSummary = async () => {
     if (!notes.trim()) {
@@ -150,13 +167,13 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
           const parts = m.split("—");
           return {
             name: parts[0]?.trim() || m,
-            instructions: parts[1]?.trim() || "As directed by attending physician",
+            instructions: parts.slice(1).join("—").trim(),
           };
         });
 
       const summaryObj: VisitSummary = {
         overview: notes.trim(),
-        diagnosis: diagnosis.trim() || "Clinical consultation completed",
+        diagnosis: diagnosis.trim(),
         treatment_plan: treatmentPlan
           .split("\n")
           .map((s) => s.trim())
@@ -166,10 +183,8 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
           .split("\n")
           .map((s) => s.trim())
           .filter(Boolean),
-        warning_signs: [
-          "Seek emergency care immediately or call 998 if you develop chest pain, severe shortness of breath, sudden numbness, or rapid deterioration.",
-        ],
-        follow_up: followUp.trim() || "Follow up with a physician if symptoms do not improve as anticipated.",
+        warning_signs: warnings.split("\n").map(line => line.trim()).filter(Boolean),
+        follow_up: followUp.trim(),
       };
 
       const { error } = await supabase
@@ -180,7 +195,9 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
           visit_summary_approved_at: new Date().toISOString(),
           visit_summary_approved_by: user.id,
         })
-        .eq("id", consultationId);
+        .eq("id", consultationId)
+        .select("id")
+        .single();
 
       if (error) throw error;
 
@@ -195,14 +212,15 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
             .filter(Boolean)
             .join("\n\n");
 
-          await supabase.rpc("add_patient_journal_entry", {
+          const { error: journalError } = await supabase.rpc("add_patient_journal_entry", {
             _consultation_id: consultationId,
-            _diagnosis: diagnosis.trim() || "Consultation Assessment",
-            _treatment: treatmentCombined || "Standard care recommendations provided",
+            _diagnosis: diagnosis.trim(),
+            _treatment: treatmentCombined,
             _notes: notes.trim(),
           });
+          if (journalError) throw journalError;
         } catch {
-          // Journal entry sync failure should not block summary update
+          toast.warning("The summary was saved, but the journal entry could not be added.");
         }
       }
 
@@ -219,7 +237,7 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={value => { setLoadState("loading"); setOpen(value); }}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5 text-xs">
           <FileText className="h-3.5 w-3.5 text-primary" />
@@ -247,6 +265,8 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
           </DialogDescription>
         </DialogHeader>
 
+        {loadState === "loading" ? <p role="status">Loading visit notes…</p> :
+         loadState === "failed" ? <div role="alert">Could not load the saved notes. <Button variant="link" onClick={() => setAttempt(n => n + 1)}>Retry</Button></div> : <>
         {/* View Switcher if summary exists */}
         {summary && (
           <div className="flex rounded-lg border bg-muted/40 p-1 text-xs">
@@ -349,6 +369,11 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
             </div>
 
             <div className="space-y-1.5">
+              <Label htmlFor="summary-warnings">When to seek urgent care</Label>
+              <Textarea id="summary-warnings" value={warnings} onChange={e => setWarnings(e.target.value)} rows={2} maxLength={4000} />
+            </div>
+
+            <div className="space-y-1.5">
               <Label htmlFor="summary-followup" className="text-xs font-semibold">
                 Follow-Up Guidance
               </Label>
@@ -371,6 +396,7 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
             </Button>
           </div>
         )}
+        </>}
       </DialogContent>
     </Dialog>
   );

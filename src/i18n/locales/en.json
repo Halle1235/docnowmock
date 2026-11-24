@@ -1,4 +1,40 @@
 {
+  "challengeError": "The security check could not load. Check your connection and reload this page.",
+  "legal": {
+    "privacy": "Privacy notice",
+    "terms": "Terms of use",
+    "links": "Patient information",
+    "draft": "Draft for review",
+    "home": "Back to DocNow",
+    "privacySections": [
+      {
+        "title": "Information used for a visit",
+        "text": "DocNow asks for your contact information, date of birth, identification details and reason for the visit. An unfinished intake form stays in the current page session. When you confirm an unpaid booking, DocNow saves your booking details and consent with your patient account."
+      },
+      {
+        "title": "Access and services",
+        "text": "You can see your visits and approved summaries in your account. Assigned, verified doctors can access records for care. Administrators have access for authorised operations. DocNow uses Supabase for accounts and records and Daily for video visits. Doctors write and approve visit summaries."
+      },
+      {
+        "title": "Details awaiting confirmation",
+        "text": "Before publication, the operator must confirm its legal name, privacy contact, retention periods, service locations and the process for requesting access or corrections."
+      }
+    ],
+    "termsSections": [
+      {
+        "title": "Using DocNow",
+        "text": "Use contact details you can access, enter accurate information and review the consent prompts before booking. The form checks the format of identification details. It does not authenticate an identity document."
+      },
+      {
+        "title": "Video visits and booking",
+        "text": "A booking requests a video visit and depends on doctor availability. The listed consultation fee is AED 249. The current booking flow collects AED 0 at checkout. For a medical emergency in the UAE, call 998."
+      },
+      {
+        "title": "Details awaiting confirmation",
+        "text": "Before publication, the operator must confirm the responsible clinic, licensing details, support and complaints contact, and billing and cancellation terms."
+      }
+    ]
+  },
   "header": {
     "brand": "DocNow",
     "doctorPortal": "Doctor Portal",
@@ -238,7 +274,7 @@
   "payment": {
     "title": "Review your booking",
     "subtitle": "Secure payment with encrypted connection",
-    "consultationLabel": "Video consultation",
+    "consultationLabel": "Listed consultation fee",
     "price": "249 AED",
     "includesReceipt": "Includes prescription if needed",
     "cardHolder": "Cardholder",
@@ -257,7 +293,7 @@
     "allInfoRequired": "All information is required to complete the payment",
     "paymentComplete": "Payment completed",
     "appointmentBooked": "Your video appointment is now booked",
-    "unavailable": "Payments are not available yet. You can continue with an unpaid booking; no money will be charged.",
+    "unavailable": "Due at booking: AED 0. Continue to request your visit without payment.",
     "continueUnpaid": "Continue without payment",
     "booking": "Booking…",
     "bookingFailed": "Could not book. Please try again.",

@@ -13,6 +13,7 @@ import { intakeSchema } from "@/lib/booking-intake";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import BookingAvailability from "@/components/BookingAvailability";
+import { challengeSiteKey } from "@/components/AuthChallenge";
 import { sendBookingCode } from "@/lib/booking-email";
 import * as CountryFlags from "country-flag-icons/react/3x2";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -72,6 +73,10 @@ const Registration = () => {
     sendingRef.current = true;
     setSending(true);
     const verificationPath = "/auth?as=patient&method=email-code&returnTo=%2Fmedical-reason";
+    if (challengeSiteKey) {
+      navigate(verificationPath);
+      return;
+    }
     try {
       await sendBookingCode(result.data.email.toLowerCase());
       navigate(verificationPath, { state: { sentAt: Date.now() } });

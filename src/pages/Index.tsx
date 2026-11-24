@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Video, Shield, Clock, CheckCircle, LogOut, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { PatientInformationLinks } from "./PatientInformation";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import BookingAvailability from "@/components/BookingAvailability";
 import { CONSULTATION_PRICE_AED } from "@/lib/booking-intake";
@@ -205,6 +206,7 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="text-center text-sm text-muted-foreground">
             <p>{t("footer.copyright")}</p>
+            <PatientInformationLinks />
             <p className="mt-2 flex flex-wrap items-center justify-center gap-x-2">
               {t("footer.tagline")
                 .split("•")

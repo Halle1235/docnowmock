@@ -10,7 +10,10 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccount } from "@/components/AccountProvider";
 
+import { useAuthChallenge } from "@/components/AuthChallenge";
+
 const ResetPassword = () => {
+  const captcha = useAuthChallenge();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -41,9 +44,11 @@ const ResetPassword = () => {
 
   const handleRequest = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!captcha.ready || loading) return;
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(recoveryEmail, {
+        captchaToken: captcha.token,
         redirectTo: `${window.location.origin}/reset-password`,
       });
       if (error) throw error;
@@ -59,6 +64,7 @@ const ResetPassword = () => {
         variant: "destructive",
       });
     } finally {
+      captcha.reset();
       setLoading(false);
     }
   };
@@ -156,7 +162,8 @@ const ResetPassword = () => {
                     className="h-12"
                   />
                 </div>
-                <Button type="submit" className="w-full h-12" disabled={loading}>
+                {captcha.challenge}
+                <Button type="submit" className="w-full h-12" disabled={loading || !captcha.ready}>
                   {t(loading ? "recovery.sending" : settingPassword ? "bookingEmail.setPassword" : "recovery.send")}
                 </Button>
               </form>

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertTriangle, ShieldCheck } from "lucide-react";
+import { PatientInformationLinks } from "./PatientInformation";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useBookingDraft } from "@/components/BookingDraftProvider";
 import { reasonSchema } from "@/lib/booking-intake";
@@ -185,6 +186,7 @@ const MedicalReason = () => {
               </div>
             )}
 
+            <PatientInformationLinks newTab />
             <div className="space-y-3">
               {[
                 { id: "ack-emergency", v: ackEmergency, set: setAckEmergency, k: "ackEmergency" },

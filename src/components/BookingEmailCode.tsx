@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { sendBookingCode } from "@/lib/booking-email";
 
+import { useAuthChallenge } from "@/components/AuthChallenge";
+
 interface Props {
   email: string;
   sentAt: number;
@@ -15,6 +17,7 @@ interface Props {
 }
 
 export default function BookingEmailCode({ email, sentAt, sendFailed, onEditEmail, onPasswordLogin }: Props) {
+  const captcha = useAuthChallenge();
   const { t } = useTranslation();
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,12 +35,12 @@ export default function BookingEmailCode({ email, sentAt, sendFailed, onEditEmai
   }, [lastSent]);
 
   const resend = async () => {
-    if (inFlight.current || remaining > 0) return;
+    if (inFlight.current || remaining > 0 || !captcha.ready) return;
     inFlight.current = true;
     setBusy(true);
     setError("");
     try {
-      await sendBookingCode(email);
+      await sendBookingCode(email, captcha.token);
       const time = Date.now();
       setToken("");
       setLastSent(time);
@@ -46,6 +49,7 @@ export default function BookingEmailCode({ email, sentAt, sendFailed, onEditEmai
     } catch {
       setError("bookingEmail.sendError");
     } finally {
+      captcha.reset();
       inFlight.current = false;
       setBusy(false);
     }
@@ -85,7 +89,8 @@ export default function BookingEmailCode({ email, sentAt, sendFailed, onEditEmai
           <Button type="submit" className="w-full" disabled={busy || token.length !== 6}>{t("bookingEmail.verify")}</Button>
         </form>
       )}
-      <Button type="button" variant="outline" className="w-full" disabled={busy || remaining > 0} onClick={() => void resend()}>
+      {captcha.challenge}
+      <Button type="button" variant="outline" className="w-full" disabled={busy || remaining > 0 || !captcha.ready} onClick={() => void resend()}>
         {remaining > 0 ? t("bookingEmail.resendTimer", { seconds: remaining }) : t(sent ? "bookingEmail.resend" : "bookingEmail.send")}
       </Button>
       <div className="flex flex-wrap gap-2">

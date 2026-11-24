@@ -15,7 +15,10 @@ import { bookingReturnPath } from "@/lib/booking-intake";
 import { useBookingDraft } from "@/components/BookingDraftProvider";
 import BookingEmailCode from "@/components/BookingEmailCode";
 
+import { useAuthChallenge } from "@/components/AuthChallenge";
+
 const Auth = () => {
+  const captcha = useAuthChallenge();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -73,6 +76,7 @@ const Auth = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!captcha.ready || loading) return;
     setLoading(true);
 
     try {
@@ -81,6 +85,7 @@ const Auth = () => {
           email: email.trim(),
           password,
           options: {
+            captchaToken: captcha.token,
             emailRedirectTo: `${window.location.origin}/auth?as=${isPatient ? "patient" : "doctor"}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`,
             data: {
               full_name: fullName.trim(),
@@ -95,7 +100,7 @@ const Auth = () => {
           return;
         }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password, options: { captchaToken: captcha.token } });
         if (error) throw error;
       }
 
@@ -110,6 +115,7 @@ const Auth = () => {
         variant: "destructive",
       });
     } finally {
+      captcha.reset();
       setLoading(false);
     }
   };
@@ -236,7 +242,8 @@ const Auth = () => {
                     />
                   </div>
 
-                  <Button type="submit" className="w-full h-12" disabled={loading}>
+                  {captcha.challenge}
+                  <Button type="submit" className="w-full h-12" disabled={loading || !captcha.ready}>
                     {loading ? t("dashboard.loading") : signingUp ? t("auth.create") : t("auth.loginButton")}
                   </Button>
 

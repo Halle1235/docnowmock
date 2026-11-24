@@ -400,6 +400,7 @@ export type Database = {
         Returns: undefined
       }
       ensure_default_patient_account: { Args: never; Returns: undefined }
+      get_assigned_visit_summary: { Args: { _consultation_id: string }; Returns: Json }
       get_authorized_call_record: {
         Args: { _consultation_id: string }
         Returns: Json
