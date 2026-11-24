@@ -331,6 +331,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      my_account_access: { Args: never; Returns: string }
+      my_display_name: { Args: never; Returns: string | null }
+      my_booking_profile: { Args: never; Returns: Json }
+      my_doctor_details: { Args: never; Returns: Json }
+      my_visits: { Args: never; Returns: Json }
+      my_waiting_visit: { Args: { _consultation_id: string }; Returns: Json }
+      my_call_state: { Args: { _consultation_id: string; _include_details?: boolean }; Returns: Json }
+      save_assigned_visit_summary: { Args: { _consultation_id: string; _notes: string; _summary: Json; _journal_treatment: string }; Returns: undefined }
+      admin_directory: { Args: never; Returns: Json }
+      admin_edit_profile: { Args: { _user_id: string; _full_name: string; _phone: string | null }; Returns: undefined }
+      admin_set_basic_role: { Args: { _user_id: string; _role: Database["public"]["Enums"]["app_role"]; _enabled: boolean }; Returns: undefined }
+      admin_set_doctor_access: { Args: { _user_id: string; _enabled: boolean }; Returns: undefined }
       add_patient_journal_entry: {
         Args: {
           _consultation_id: string

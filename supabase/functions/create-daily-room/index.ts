@@ -1,222 +1,80 @@
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { callCors, callJson, dailyRooms, isUuid, type CleanupTarget, type StoredRoom } from "../_shared/daily-rooms.ts";
+
+interface RoomState extends StoredRoom {
+  state: "forbidden" | "closed" | "waiting" | "ready" | "reserved";
+  expires_at: number;
+  lease: string | null;
+  is_doctor: boolean;
+}
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
+  if (req.method === "OPTIONS") return new Response("ok", { headers: callCors });
+  if (req.method !== "POST") return callJson({ error: "Method not allowed" }, 405);
   try {
-    const DAILY_API_KEY = Deno.env.get("DAILY_API_KEY");
-    if (!DAILY_API_KEY) throw new Error("DAILY_API_KEY not configured");
-
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-
-    if (!SUPABASE_URL) throw new Error("Backend not configured");
-
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing auth" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const url = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!url || !anonKey || !serviceKey) throw new Error("Video service is not configured");
+    const authorization = req.headers.get("Authorization");
+    if (!authorization) return callJson({ error: "Sign in required" }, 401);
+    const user = createClient(url, anonKey, { global: { headers: { Authorization: authorization } } });
+    const { data: { user: actor }, error: authError } = await user.auth.getUser();
+    if (authError || !actor) return callJson({ error: "Sign in required" }, 401);
+    const body = await req.json().catch(() => null);
+    if (!isUuid(body?.consultationId) || (body.action !== undefined && !["end", "join"].includes(body.action))) {
+      return callJson({ error: "Invalid call request" }, 400);
     }
+    const consultationId = body.consultationId;
+    const server = createClient(url, serviceKey);
+    const target = { _consultation_id: consultationId, _actor: actor.id };
 
-    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") || "", {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const body = await req.json().catch(() => ({}));
-    const consultationId = String(body.consultationId || "");
-    if (!consultationId || !/^[0-9a-f-]{36}$/i.test(consultationId)) {
-      return new Response(JSON.stringify({ error: "Invalid consultationId" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: consult, error: consultErr } = await userClient.rpc("get_authorized_call_record", {
-      _consultation_id: consultationId,
-    });
-
-    if (consultErr || !consult) {
-      return new Response(JSON.stringify({ error: "Consultation not found" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (consult.doctor_id !== userData.user.id && consult.patient_id !== userData.user.id) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const isDoctor = consult.doctor_id === userData.user.id;
-    const roomNameFromUrl = (url: string) => {
-      const parsed = new URL(url);
-      if (
-        parsed.protocol !== "https:" ||
-        !parsed.hostname.endsWith(".daily.co") ||
-        !/^\/[a-zA-Z0-9_-]+$/.test(parsed.pathname)
-      )
-        throw new Error("Invalid room URL");
-      return parsed.pathname.slice(1);
-    };
     if (body.action === "end") {
-      if (!isDoctor)
-        return new Response(JSON.stringify({ error: "Only the assigned doctor may end the consultation" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const closed = await server.rpc("close_bound_video_room", target);
+      if (closed.error) throw new Error("Could not end the consultation");
+      if (closed.data !== true) return callJson({ error: "Assigned doctor required" }, 403);
+      const cleanup = await server.rpc("video_room_cleanup_targets", { _consultation_id: consultationId });
+      if (cleanup.error) throw new Error("Could not load room cleanup");
+      for (const room of (cleanup.data ?? []) as CleanupTarget[]) {
+        if (!await dailyRooms().close(room)) return callJson({ ended: true, cleanupPending: true }, 503);
+        const result = await server.rpc("mark_video_room_cleaned", {
+          _consultation_id: room.consultation_id, _name: room.name,
         });
-      // Close authorization first. If provider cleanup fails, retries cannot reopen the visit.
-      if (!["completed", "cancelled"].includes(consult.status)) {
-        const { error } = await userClient
-          .from("consultations")
-          .update({ status: "completed", completed_at: new Date().toISOString() })
-          .eq("id", consultationId);
-        if (error) throw new Error("Could not end consultation");
+        if (result.error) throw new Error("Could not confirm room cleanup");
       }
-      if (consult.room_url) {
-        const name = roomNameFromUrl(consult.room_url);
-        const deleted = await fetch(`https://api.daily.co/v1/rooms/${name}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${DAILY_API_KEY}` },
-        });
-        await deleted.text();
-        if (!deleted.ok && deleted.status !== 404)
-          throw new Error("Consultation ended, but room cleanup failed. Retry ending the call.");
-      }
-      return new Response(JSON.stringify({ ended: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return callJson({ ended: true });
     }
-    if (body.action && body.action !== "join")
-      return new Response(JSON.stringify({ error: "Invalid action" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    if (!["claimed", "in_progress"].includes(consult.status)) {
-      return new Response(JSON.stringify({ error: "Consultation is not active" }), {
-        status: 410,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const makeToken = async (roomName: string) => {
-      const r = await fetch("https://api.daily.co/v1/meeting-tokens", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${DAILY_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          properties: {
-            room_name: roomName,
-            user_id: userData.user.id,
-            is_owner: isDoctor,
-            exp: Math.floor(Date.now() / 1000) + 60 * 60, // 60 minutes
-            eject_at_token_exp: true,
-          },
-        }),
-      });
-      const j = await r.json();
-      if (!r.ok) throw new Error("Failed to create meeting token");
-      return j.token as string;
+
+    const getBinding = async (reserve: boolean) => {
+      const result = await server.rpc("video_room_for_actor", { ...target, _reserve: reserve });
+      if (result.error || !result.data) throw new Error("Could not verify call access");
+      return result.data as RoomState;
     };
-
-    if (consult.room_url) {
-      const existingName = roomNameFromUrl(consult.room_url);
-      const roomResponse = await fetch(`https://api.daily.co/v1/rooms/${existingName}`, {
-        headers: { Authorization: `Bearer ${DAILY_API_KEY}` },
+    let binding = await getBinding(true);
+    if (binding.state === "forbidden") return callJson({ error: "Consultation access denied" }, 403);
+    if (binding.state === "closed") return callJson({ error: "Consultation room is closed" }, 410);
+    if (binding.state === "waiting") return callJson({ error: "Waiting for the room" }, 409);
+    const daily = dailyRooms();
+    if (binding.state === "reserved") {
+      const created = await daily.provision(binding, binding.expires_at);
+      const attach = await server.rpc("attach_bound_video_room", {
+        ...target, _lease: binding.lease, _provider_id: created.id, _room_url: created.url,
       });
-      const room = await roomResponse.json();
-      if (
-        roomResponse.status === 404 ||
-        (roomResponse.ok && Number(room.config?.exp) > 0 && Number(room.config.exp) <= Math.floor(Date.now() / 1000))
-      )
-        return new Response(JSON.stringify({ error: "Consultation room has expired" }), {
-          status: 410,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      if (!roomResponse.ok) throw new Error("Could not verify room availability");
-      const token = await makeToken(existingName);
-      return new Response(JSON.stringify({ url: consult.room_url, token }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (attach.error) throw new Error("Could not save the room");
+      if (attach.data !== true) return callJson({ error: "Room could not be opened" }, 409);
+      binding = await getBinding(false);
     }
-
-    // Only the doctor may create the room
-    if (consult.doctor_id !== userData.user.id) {
-      return new Response(JSON.stringify({ error: "Waiting for doctor to start the call" }), {
-        status: 409,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (binding.state !== "ready") return callJson({ error: "Consultation room is closed" }, 410);
+    const room = await daily.lookup(binding);
+    const expires = Math.min(binding.expires_at, room?.exp ?? 0);
+    if (!room || expires <= Math.floor(Date.now() / 1000)) return callJson({ error: "Consultation room is closed" }, 410);
+    const token = await daily.token(binding.name, actor.id, binding.is_doctor, expires);
+    const current = await getBinding(false);
+    if (current.state !== "ready" || current.provider_id !== binding.provider_id || current.is_doctor !== binding.is_doctor) {
+      return callJson({ error: "Consultation room is closed" }, 410);
     }
-
-    const exp = Math.floor(Date.now() / 1000) + 60 * 60; // 60 minutes
-    const roomName = `consult-${consultationId.slice(0, 8)}-${Date.now().toString(36)}`;
-
-    const dailyResp = await fetch("https://api.daily.co/v1/rooms", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${DAILY_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: roomName,
-        privacy: "private",
-        properties: {
-          exp,
-          eject_at_room_exp: true,
-          enable_chat: true,
-          enable_screenshare: true,
-          start_video_off: false,
-          start_audio_off: false,
-        },
-      }),
-    });
-
-    const dailyData = await dailyResp.json();
-    if (!dailyResp.ok) {
-      console.error("Daily error", dailyData);
-      return new Response(JSON.stringify({ error: "Failed to create room", details: dailyData }), {
-        status: 502,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const url = dailyData.url as string;
-
-    const { error: updErr } = await userClient
-      .from("consultations")
-      .update({ room_url: url, status: "in_progress" })
-      .eq("id", consultationId);
-
-    if (updErr) {
-      throw new Error("Could not save the call room");
-    }
-
-    const token = await makeToken(dailyData.name);
-    return new Response(JSON.stringify({ url, token }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unknown error";
-    console.error(msg);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return callJson({ url: room.url, token });
+  } catch {
+    return callJson({ error: "Video service could not complete the request. Please retry." }, 503);
   }
 });

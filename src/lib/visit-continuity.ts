@@ -1,8 +1,8 @@
 export interface VisitContinuity {
   id: string;
   status: string;
-  room_url: string | null;
-  doctor_id: string | null;
+  room_ready: boolean;
+  doctor_assigned: boolean;
   payment_status: string;
 }
 
@@ -15,11 +15,11 @@ export function orderVisitsByActivity<T extends Pick<VisitContinuity, "status">>
 }
 
 export function canCancelWaitingBooking(visit: VisitContinuity) {
-  return visit.status === "pending" && !visit.doctor_id && !visit.room_url && visit.payment_status === "pending";
+  return visit.status === "pending" && !visit.doctor_assigned && !visit.room_ready && visit.payment_status === "pending";
 }
 
 export function activeVisitPath(visit: VisitContinuity) {
-  const canJoin = visit.room_url && ["claimed", "in_progress"].includes(visit.status);
+  const canJoin = visit.room_ready && ["claimed", "in_progress"].includes(visit.status);
   return canJoin
     ? `/call/${encodeURIComponent(visit.id)}`
     : `/waiting-room?id=${encodeURIComponent(visit.id)}`;
