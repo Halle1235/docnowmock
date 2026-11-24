@@ -27,11 +27,11 @@
   "features": {
     "videoConsultation": {
       "title": "Video Consultation",
-      "description": "Meet licensed doctors via secure video link, wherever you are."
+      "description": "Join a private video call with a doctor in the UAE."
     },
     "licensedDoctors": {
       "title": "Licensed Doctors",
-      "description": "All our doctors are licensed and experienced in their specialty."
+      "description": "Doctors are reviewed and approved before they can accept consultations."
     },
     "quickAccess": {
       "title": "Quick Access",
@@ -53,8 +53,8 @@
       "description": "Join the video call when your doctor is ready."
     },
     "security": {
-      "title": "Safe care according to the highest standards",
-      "description": "We follow all security and privacy rules. Your information is encrypted and secure."
+      "title": "Your visit details",
+      "description": "Sign in to My Visits to see your bookings and doctor-approved visit summaries."
     },
     "getStarted": "Get started now"
   },
