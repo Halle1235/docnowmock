@@ -4,245 +4,139 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
 
-// Test the deployed handler source with fictional actors and a synthetic Daily boundary.
-const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
-const shared = read("../supabase/functions/_shared/daily-rooms.ts").replace(/^export /gm, "");
-const compile = (name: string) => ts.transpileModule(
-  shared + "\n" + read(`../supabase/functions/${name}/index.ts`).replace(/^import [^\n]*\n/gm, ""),
-  { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } },
-).outputText;
-const joinSource = compile("create-daily-room");
-const cleanupSource = compile("revoke-call-access");
-
-const uuid = (number: number) => `10000000-0000-4000-8000-${String(number).padStart(12, "0")}`;
-const doctor = uuid(1), patient = uuid(2), outsider = uuid(3), admin = uuid(4), visit = uuid(5);
-const room = "docnow-" + "a".repeat(32);
-const origin = "https://fixture.daily.co";
-const expiry = () => Math.floor(Date.now() / 1000) + 3600;
-type Scenario = {
-  actor?: string; action?: string; requestId?: string; auth?: boolean; cleanup?: boolean;
-  absent?: boolean; reserved?: boolean; stale?: boolean; wrongIdentity?: boolean;
-  expired?: boolean; cleanupFailure?: boolean; leaseActive?: boolean; revoked?: boolean;
-  revokeAfterMint?: boolean;
-};
-
-async function request(scenario: Scenario = {}) {
-  const actor = scenario.actor ?? doctor;
-  const rpcCalls: string[] = [];
-  const providerCalls: string[] = [];
-  const timeline: string[] = [];
-  const exp = scenario.expired ? 1 : expiry();
-  let hasRoom = !scenario.absent && !scenario.reserved;
-  let attached = !scenario.reserved;
-  let closed = scenario.cleanup === true || scenario.stale === true;
-  let cleaned = false;
-  let generatedToken: Record<string, unknown> | undefined;
-  const server = {
-    rpc: async (name: string, args: Record<string, unknown>) => {
-      rpcCalls.push(name);
-      timeline.push(name);
-      assert.equal(name === "has_role" ? args._user_id : (args._actor ?? actor), actor);
-      switch (name) {
-        case "has_role": return { data: actor === admin };
-        case "video_room_for_actor": {
-          if (scenario.revoked || ![doctor, patient].includes(actor)) return { data: { state: "forbidden" } };
-          if (closed) return { data: { state: "closed" } };
-          if (!attached && actor !== doctor) return { data: { state: "waiting" } };
-          return { data: {
-            state: attached ? "ready" : "reserved", name: room, provider_id: attached ? "provider-room-id" : null,
-            lease: attached ? null : uuid(6), expires_at: expiry(), is_doctor: actor === doctor,
-          } };
-        }
-        case "attach_bound_video_room":
-          assert.equal(args._room_url, `${origin}/${room}`);
-          assert.equal(args._provider_id, "provider-room-id");
-          attached = true;
-          return { data: true };
-        case "close_bound_video_room":
-          if (actor !== doctor) return { data: false };
-          closed = true;
-          return { data: true };
-        case "video_room_cleanup_targets":
-          assert.ok(closed);
-          assert.equal(scenario.cleanup ? args._doctor_id : args._consultation_id, scenario.cleanup ? doctor : visit);
-          return { data: [{ consultation_id: visit, name: room, provider_id: "provider-room-id", lease_active: !!scenario.leaseActive }] };
-        case "mark_video_room_cleaned":
-          assert.ok(closed && !hasRoom);
-          assert.equal(args._name, room);
-          cleaned = true;
-          return { data: true };
-        case "video_room_cleanup_pending": return { data: !cleaned };
-        default: throw new Error("Unexpected database call");
-      }
-    },
-  };
-  const user = {
-    auth: { getUser: async () => ({ data: { user: { id: actor } }, error: null }) },
-    rpc: async (name: string, args: Record<string, unknown>) => {
-      assert.equal(actor, admin);
-      assert.equal(name, "admin_close_revoked_doctor_visits");
-      assert.equal(args._user_id, doctor);
-      return { error: null };
-    },
-  };
-  const createClient = (_url: string, key: string) => key === "test-service-key" ? server : user;
-  const fakeFetch = async (url: string, init: RequestInit) => {
-    const path = new URL(url).pathname;
-    assert.equal(new URL(url).origin, "https://api.daily.co");
-    providerCalls.push(`${init.method} ${path}`);
-    timeline.push(`${init.method} ${path}`);
-    if (path === "/v1/rooms") {
-      const body = JSON.parse(String(init.body));
-      assert.equal(body.name, room);
-      assert.equal(body.privacy, "private");
-      assert.equal(body.properties.eject_at_room_exp, true);
-      hasRoom = true;
-    } else if (path.endsWith("/meeting-tokens")) {
-      generatedToken = JSON.parse(String(init.body)).properties;
-      if (scenario.revokeAfterMint) closed = true;
-      return Response.json({ token: "fictional-token" });
-    } else if (path === `/v1/rooms/${room}`) {
-      if (init.method === "GET") {
-        if (!hasRoom) return new Response(null, { status: 404 });
-        return Response.json({
-          id: scenario.wrongIdentity ? "different-provider-id" : "provider-room-id",
-          name: room, url: `${origin}/${room}`, privacy: "private", config: { exp },
-        });
-      }
-      assert.ok(closed);
-      if (init.method === "DELETE") {
-        if (scenario.cleanupFailure) return new Response(null, { status: 503 });
-        hasRoom = false;
-      }
-    } else {
-      throw new Error("Unexpected provider call");
-    }
-    return Response.json({});
-  };
-  const env: Record<string, string> = {
-    SUPABASE_URL: "https://backend.example.invalid", SUPABASE_ANON_KEY: "test-public-key",
-    SUPABASE_SERVICE_ROLE_KEY: "test-service-key", DAILY_API_KEY: "test-daily-key", DAILY_ROOM_ORIGIN: origin,
-  };
+// Execute the actual edge handler with fake identity/provider boundaries.
+// No network, real credentials, or real video rooms are used by this suite.
+const source = readFileSync(new URL("../supabase/functions/create-daily-room/index.ts", import.meta.url), "utf8")
+  .replace(/^import [^\n]*\n/gm, "");
+const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+const doctorA = "10000000-0000-4000-8000-000000000001";
+const patientA = "10000000-0000-4000-8000-000000000002";
+const doctorB = "10000000-0000-4000-8000-000000000003";
+const patientB = "10000000-0000-4000-8000-000000000004";
+const admin = "10000000-0000-4000-8000-000000000005";
+const roomA = { id: "20000000-0000-4000-8000-000000000001", doctor_id: doctorA, patient_id: patientA, status: "in_progress", room_url: "https://test.daily.co/consultation-a" };
+const roomB = { id: "20000000-0000-4000-8000-000000000002", doctor_id: doctorB, patient_id: patientB, status: "in_progress", room_url: "https://test.daily.co/consultation-b" };
+type RecordData = typeof roomA;
+type ProviderCall = { url: string; body: Record<string, unknown> };
+async function requestAs(user: string | null, record: RecordData | null, options: { auth?: boolean; invalidSession?: boolean; consultationId?: string; action?: string; expired?: boolean; missingRoom?: boolean; cleanupFailure?: boolean } = {}) {
   let handler: ((req: Request) => Promise<Response>) | undefined;
-  const deno = { env: { get: (name: string) => env[name] }, serve: (fn: typeof handler) => { handler = fn; } };
-  new Function("Deno", "createClient", "fetch", scenario.cleanup ? cleanupSource : joinSource)(deno, createClient, fakeFetch);
+  const calls: ProviderCall[] = [];
+  const rpcIds: string[] = [];
+  const updates: Array<{ id: string; value: unknown }> = [];
+  const client = {
+    auth: { getUser: async () => ({ data: { user: user ? { id: user } : null }, error: options.invalidSession ? new Error("Invalid session") : null }) },
+    rpc: async (name: string, args: { _consultation_id: string }) => {
+      assert.equal(name, "get_authorized_call_record"); rpcIds.push(args._consultation_id);
+      return { data: record, error: record ? null : { code: "42501" } };
+    },
+    from: (table: string) => {
+      assert.equal(table, "consultations");
+      return { update: (value: unknown) => ({ eq: async (_column: string, id: string) => { updates.push({ id, value }); return { error: null }; } }) };
+    },
+  };
+  const fakeFetch = async (url: string, init: RequestInit) => {
+    const body = init.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {};
+    calls.push({ url, body });
+    if (!init.method) return new Response(JSON.stringify({ config: { exp: options.expired ? 1 : Math.floor(Date.now() / 1000) + 7200 } }), { status: options.missingRoom ? 404 : 200 });
+    if (options.action === "end") return new Response("{}", { status: options.cleanupFailure ? 500 : 200 });
+    return new Response(JSON.stringify(url.endsWith("/meeting-tokens") ? { token: "synthetic-token" } : { name: body.name, url: `https://test.daily.co/${body.name}` }), { status: 200 });
+  };
+  const deno = { env: { get: () => "synthetic-test-only" }, serve: (fn: typeof handler) => { handler = fn; } };
+  new Function("Deno", "createClient", "fetch", compiled)(deno, () => client, fakeFetch);
   assert.ok(handler);
-  const response = await handler(new Request("https://app.example.invalid/function", {
-    method: "POST", headers: scenario.auth === false ? {} : { Authorization: "Bearer fictional-session" },
-    body: JSON.stringify(scenario.cleanup ? { doctorId: doctor } : { consultationId: scenario.requestId ?? visit, action: scenario.action }),
+  const response = await handler(new Request("https://app.invalid/create-daily-room", {
+    method: "POST", headers: options.auth === false ? {} : { Authorization: "Bearer synthetic-session" },
+    body: JSON.stringify({ consultationId: options.consultationId ?? record?.id ?? roomA.id, action: options.action }),
   }));
-  return { status: response.status, body: await response.json(), rpcCalls, providerCalls, timeline, generatedToken, cleaned, closed };
+  const body = await response.json();
+  return { status: response.status, body, calls, rpcIds, updates };
 }
 
-for (const actor of [doctor, patient]) {
-  test(`authorized participant joins an existing bound call without creating another room (${actor === doctor ? "doctor" : "patient"})`, async () => {
-    const result = await request({ actor });
-    assert.equal(result.status, 200);
-    assert.equal(result.body.url, `${origin}/${room}`);
-    assert.equal(result.generatedToken?.room_name, room);
-    assert.equal(result.generatedToken?.is_owner, actor === doctor);
-    assert.equal(result.generatedToken?.user_id, actor);
-    assert.equal(result.generatedToken?.eject_at_token_exp, true);
-    assert.equal(result.providerCalls.length, 2);
-    assert.deepEqual(result.rpcCalls, ["video_room_for_actor", "video_room_for_actor"]);
+for (const [label, user, record, owner] of [
+  ["assigned doctor A", doctorA, roomA, true], ["assigned patient A", patientA, roomA, false],
+  ["assigned doctor B", doctorB, roomB, true], ["assigned patient B", patientB, roomB, false],
+] as const) {
+  test(`${label} receives credentials only for their consultation room`, async () => {
+    const result = await requestAs(user, record);
+    assert.equal(result.status, 200); assert.equal(result.body.url, record.room_url);
+    assert.deepEqual(result.rpcIds, [record.id]); assert.equal(result.calls.length, 2);
+    assert.equal(result.calls[1].url, "https://api.daily.co/v1/meeting-tokens");
+    const props = result.calls[1].body.properties as Record<string, unknown>;
+    assert.equal(props.room_name, new URL(record.room_url).pathname.slice(1));
+    assert.equal(props.user_id, user); assert.equal(props.is_owner, owner);
+    assert.equal(props.eject_at_token_exp, true); assert.ok(Number(props.exp) > Date.now() / 1000);
+    assert.deepEqual(result.updates, []);
   });
 }
-
-test("anonymous and unrelated accounts receive no provider credentials", async () => {
-  for (const [scenario, status] of [[{ auth: false }, 401], [{ actor: outsider }, 403], [{ actor: admin }, 403]] as const) {
-    const result = await request(scenario);
-    assert.equal(result.status, status);
-    assert.equal(result.body.token, undefined);
-    assert.deepEqual(result.providerCalls, []);
-  }
+for (const [label, user, record] of [
+  ["doctor B cannot enter room A", doctorB, roomA], ["patient B cannot enter room A", patientB, roomA],
+  ["doctor A cannot enter room B", doctorA, roomB], ["patient A cannot enter room B", patientA, roomB],
+  ["unassigned administrator cannot enter room A", admin, roomA],
+] as const) {
+  test(label, async () => {
+    // Even if the record layer incorrectly returns a record, the handler must reject outsiders.
+    const result = await requestAs(user, record);
+    assert.equal(result.status, 403); assert.equal(result.body.token, undefined);
+    assert.deepEqual(result.calls, []); assert.deepEqual(result.updates, []);
+  });
+}
+test("authorization RPC denial never issues credentials", async () => {
+  const result = await requestAs(doctorB, null);
+  assert.equal(result.status, 403); assert.deepEqual(result.calls, []);
 });
-
-test("a revoked doctor is denied before calling Daily", async () => {
-  const result = await request({ revoked: true });
-  assert.equal(result.status, 403);
-  assert.deepEqual(result.providerCalls, []);
+test("anonymous visitors cannot obtain room credentials", async () => {
+  const result = await requestAs(null, roomA, { auth: false });
+  assert.equal(result.status, 401); assert.deepEqual(result.rpcIds, []); assert.deepEqual(result.calls, []);
 });
-
-test("a concurrent revocation discards an issued credential before returning it to the browser", async () => {
-  const result = await request({ revokeAfterMint: true });
-  assert.equal(result.status, 410);
-  assert.equal(result.body.token, undefined);
-  assert.deepEqual(result.rpcCalls, ["video_room_for_actor", "video_room_for_actor"]);
+test("invalid sessions cannot obtain room credentials", async () => {
+  const result = await requestAs(doctorA, roomA, { invalidSession: true });
+  assert.equal(result.status, 401); assert.deepEqual(result.rpcIds, []); assert.deepEqual(result.calls, []);
 });
-
-test("invalid consultation input reaches neither boundary", async () => {
-  const result = await request({ requestId: "invalid" });
-  assert.equal(result.status, 400);
-  assert.deepEqual(result.rpcCalls, []);
-  assert.deepEqual(result.providerCalls, []);
+test("assigned patient must wait until the doctor creates their room", async () => {
+  const result = await requestAs(patientA, { ...roomA, status: "claimed", room_url: "" });
+  assert.equal(result.status, 409); assert.deepEqual(result.calls, []); assert.deepEqual(result.updates, []);
 });
-
-test("patient waits while a private room is being provisioned", async () => {
-  const result = await request({ actor: patient, reserved: true });
-  assert.equal(result.status, 409);
-  assert.deepEqual(result.providerCalls, []);
+test("only assigned doctor creates a private room bound to the consultation", async () => {
+  const result = await requestAs(doctorA, { ...roomA, status: "claimed", room_url: "" });
+  assert.equal(result.status, 200); assert.equal(result.calls.length, 2);
+  const created = result.calls[0].body;
+  assert.equal(created.privacy, "private");
+  assert.equal((result.calls[1].body.properties as Record<string, unknown>).room_name, created.name);
+  assert.deepEqual(result.updates, [{ id: roomA.id, value: { room_url: result.body.url, status: "in_progress" } }]);
 });
-
-test("the assigned doctor attaches the reserved room before receiving credentials", async () => {
-  const result = await request({ reserved: true });
-  assert.equal(result.status, 200);
-  assert.equal(result.providerCalls.filter((call) => call === "POST /v1/rooms").length, 1);
-  assert.ok(result.timeline.indexOf("attach_bound_video_room") < result.timeline.indexOf("POST /v1/meeting-tokens"));
+test("completed consultations do not issue room credentials", async () => {
+  const result = await requestAs(doctorA, { ...roomA, status: "completed" });
+  assert.equal(result.status, 410); assert.deepEqual(result.calls, []);
 });
-
-test("a closed, expired, or missing room can never mint a new token", async () => {
-  for (const scenario of [{ stale: true }, { expired: true }, { absent: true }]) {
-    const result = await request(scenario);
-    assert.equal(result.status, 410);
-    assert.equal(result.body.token, undefined);
-    assert.ok(result.providerCalls.every((call) => call.startsWith("GET ")));
-  }
+test("invalid consultation identifiers never reach authorization or the video provider", async () => {
+  const result = await requestAs(doctorA, roomA, { consultationId: "another-room" });
+  assert.equal(result.status, 400); assert.deepEqual(result.rpcIds, []); assert.deepEqual(result.calls, []);
 });
-
-test("provider identity mismatch fails closed for join and cleanup", async () => {
-  for (const scenario of [{ wrongIdentity: true }, { wrongIdentity: true, action: "end" }]) {
-    const result = await request(scenario);
-    assert.equal(result.status, 503);
-    assert.ok(result.providerCalls.every((call) => call.startsWith("GET ")));
-  }
+for (const user of [doctorA, patientA]) test(`expired room rejects participant ${user}`, async () => {
+ const result = await requestAs(user, roomA, { expired: true });
+ assert.equal(result.status, 410); assert.equal(result.body.token, undefined);
+ assert.equal(result.calls.filter(c => c.url.endsWith("meeting-tokens")).length, 0);
 });
-
-test("doctor ending commits consultation closure before Daily deletion", async () => {
-  const result = await request({ action: "end" });
-  assert.equal(result.status, 200);
-  assert.ok(result.cleaned);
-  assert.ok(result.timeline.indexOf("close_bound_video_room") < result.timeline.indexOf(`DELETE /v1/rooms/${room}`));
+test("deleted room never creates a replacement on rejoin", async () => {
+ const result = await requestAs(doctorA, roomA, { missingRoom: true });
+ assert.equal(result.status, 410); assert.deepEqual(result.updates, []);
 });
-
-test("patients cannot end their consultation's room", async () => {
-  const result = await request({ actor: patient, action: "end" });
-  assert.equal(result.status, 403);
-  assert.deepEqual(result.providerCalls, []);
+test("doctor end closes authorization before deleting the room", async () => {
+ const result = await requestAs(doctorA, roomA, { action: "end" });
+ assert.equal(result.status, 200); assert.equal(result.body.ended, true);
+ assert.equal((result.updates[0].value as {status:string}).status, "completed");
+ assert.equal(result.calls.length, 1);
 });
-
-test("cleanup retries stay available without reopening the visit", async () => {
-  const failed = await request({ action: "end", cleanupFailure: true });
-  assert.equal(failed.status, 503);
-  assert.equal(failed.body.cleanupPending, true);
-  assert.equal(failed.closed, true);
-  assert.equal(failed.cleaned, false);
-  assert.equal((await request({ action: "end", stale: true })).status, 200);
+test("patient cannot end or delete the consultation room", async () => {
+ const result = await requestAs(patientA, roomA, { action: "end" });
+ assert.equal(result.status, 403); assert.deepEqual(result.calls, []); assert.deepEqual(result.updates, []);
 });
-
-test("admin cleanup reports unfinished provider work and requires an admin", async () => {
-  const forbidden = await request({ cleanup: true, actor: patient });
-  assert.equal(forbidden.status, 403);
-  assert.deepEqual(forbidden.providerCalls, []);
-  const failed = await request({ cleanup: true, actor: admin, cleanupFailure: true });
-  assert.equal(failed.body.pending, true);
-  assert.equal(failed.cleaned, false);
-  const done = await request({ cleanup: true, actor: admin });
-  assert.equal(done.body.pending, false);
-  assert.equal(done.cleaned, true);
+test("cleanup failure is reported after authorization is closed", async () => {
+ const result = await requestAs(doctorA, roomA, { action: "end", cleanupFailure: true });
+ assert.equal(result.status, 500);
+ assert.equal((result.updates[0].value as {status:string}).status, "completed");
 });
-
-test("an active provisioning lease keeps a terminal room on the cleanup list", async () => {
-  const result = await request({ cleanup: true, actor: admin, leaseActive: true });
-  assert.equal(result.body.pending, true);
-  assert.deepEqual(result.providerCalls, []);
+test("ending an already completed consultation retries cleanup without reopening", async () => {
+ const result = await requestAs(doctorA, {...roomA,status:"completed"}, { action: "end" });
+ assert.equal(result.status, 200); assert.deepEqual(result.updates, []); assert.equal(result.calls.length,1);
 });

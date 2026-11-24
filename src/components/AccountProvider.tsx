@@ -3,7 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { bookingReturnPath } from "@/lib/booking-intake";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { accountDestination, type AccountAccess } from "@/lib/account-access";
+import { accountAccess, accountDestination, type AccountAccess } from "@/lib/account-access";
 import { Button } from "@/components/ui/button";
 import { onForeground } from "@/lib/foreground";
 
@@ -52,16 +52,26 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (accountId.current !== user.id) {
+      const accountChanged = accountId.current !== user.id;
+      if (accountChanged) {
         accountId.current = user.id;
         setState({ user: null, access: null, loading: true, error: "" });
+        // Provision legacy patient accounts without delaying the authorization read.
+        void supabase.rpc("ensure_default_patient_account");
       }
 
-      const { data: access, error: accessError } = await supabase.rpc("my_account_access");
+      const [roles, doctor] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", user.id),
+        supabase.from("doctor_profiles").select("is_verified").eq("user_id", user.id).maybeSingle(),
+      ]);
       if (check !== latestCheck.current) return;
-      if (accessError || (access !== "patient" && access !== "pending" && access !== "doctor" && access !== "admin")) {
-        throw new Error("Account access unavailable");
-      }
+      if (roles.error || doctor.error) throw roles.error || doctor.error;
+
+      const access = accountAccess(
+        (roles.data ?? []).map((r) => r.role),
+        doctor.data?.is_verified === true,
+        !!doctor.data,
+      );
       setState({ user, access, loading: false, error: "" });
     } catch {
       if (check !== latestCheck.current) return;

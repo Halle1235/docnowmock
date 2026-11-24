@@ -2,16 +2,8 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
-export const showLegalDrafts = import.meta.env.DEV ||
-  [
-    "id-preview--90efb289-02e9-40b5-b8a7-c3c86b6a5564.lovable.app",
-    "preview--docnowmock.lovable.app",
-    "90efb289-02e9-40b5-b8a7-c3c86b6a5564.lovableproject.com",
-  ].includes(window.location.hostname);
-
 export function PatientInformationLinks({ newTab = false }: { newTab?: boolean }) {
   const { t } = useTranslation();
-  if (!showLegalDrafts) return null;
   return <nav aria-label={t("legal.links")} className="flex flex-wrap justify-center gap-x-5 gap-y-2 py-2">
     {(["privacy", "terms"] as const).map(kind =>
       <Link key={kind} className="text-primary underline underline-offset-4" to={`/${kind}`}

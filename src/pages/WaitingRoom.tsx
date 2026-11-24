@@ -9,14 +9,14 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import PrejoinCameraCheck from "@/components/video/PrejoinCameraCheck";
 import BookingNotifications from "@/components/BookingNotifications";
 import { useBookingNotifications } from "@/hooks/use-booking-notifications";
-import { onVisibleInterval } from "@/lib/foreground";
+import { onForeground } from "@/lib/foreground";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface ConsultationData {
   id: string;
   status: string;
   payment_status?: string;
-  room_ready: boolean;
+  room_url?: string | null;
   reason_description?: string | null;
 }
 interface DoctorInfo {
@@ -65,13 +65,15 @@ const WaitingRoom = () => {
           navigate("/auth?as=patient");
           return;
         }
-        const { data, error: readError } = await supabase.rpc("my_waiting_visit", { _consultation_id: id });
+        const record = await supabase.from("consultations")
+          .select("id, status, payment_status, room_url, reason_description")
+          .eq("id", id)
+          .maybeSingle();
         if (!active) return;
-        if (readError || !data) throw new Error("Unable to load this consultation.");
-        const record = data as unknown as NonNullable<typeof consultation>;
-        ended = ["completed", "cancelled"].includes(record.status);
-        setConsultation(record);
-        setReady(record.room_ready);
+        if (record.error || !record.data) throw new Error("Unable to load this consultation.");
+        ended = ["completed", "cancelled"].includes(record.data.status);
+        setConsultation(record.data);
+        setReady(!!record.data.room_url && ["claimed", "in_progress"].includes(record.data.status));
         setError("");
         if (ended) return;
         const status = await supabase.rpc("get_queue_status", { _consultation_id: id });
@@ -92,10 +94,16 @@ const WaitingRoom = () => {
     };
 
     void load();
-    const unsubscribe = onVisibleInterval(() => { void load(); }, 5000);
+    const timer = setInterval(load, 5000);
+    const unsubscribe = onForeground(() => { void load(); });
+    const channel = id ? supabase.channel(`waiting-${id}-${crypto.randomUUID()}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "consultations", filter: `id=eq.${id}` }, () => { void load(); })
+      .subscribe() : null;
     return () => {
       active = false;
       unsubscribe();
+      clearInterval(timer);
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [id, navigate]);
 

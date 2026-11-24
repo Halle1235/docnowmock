@@ -1,4 +1,3 @@
-import { useAccount } from "@/components/AccountProvider";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,7 +29,6 @@ interface DoctorProfile {
   license_number: string;
   specialization: string;
   is_verified: boolean;
-  cleanup_pending: boolean;
 }
 
 const AdminDashboard = () => {
@@ -38,15 +36,14 @@ const AdminDashboard = () => {
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
 
-  const { user } = useAccount();
-  const currentUserId = user?.id;
+  const [checking, setChecking] = useState(true);
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<{ user_id: string; role: AppRole }[]>([]);
   const [doctorProfiles, setDoctorProfiles] = useState<DoctorProfile[]>([]);
-  const [cleanupWithoutProfile, setCleanupWithoutProfile] = useState<{ doctor_id: string; name: string | null }[]>([]);
   const [newDoctor, setNewDoctor] = useState(emptyDoctor);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Profile | null>(null);
@@ -86,11 +83,18 @@ const AdminDashboard = () => {
     if (!editing || !editing.full_name.trim()) return;
     setSaving(true);
     try {
-      const { error } = await supabase.rpc("admin_edit_profile", {
-        _user_id: editing.id, _full_name: editing.full_name, _phone: editing.phone,
-      });
+      const updated = { full_name: editing.full_name.trim(), phone: editing.phone?.trim() || null };
+      const { error } = await supabase.from("profiles").update(updated).eq("id", editing.id);
       if (error) throw error;
-      await loadData();
+      // Read back through the audited admin path before reporting success.
+      const { data, error: readError } = await supabase
+        .rpc("list_admin_profiles")
+        .select("id, full_name, email, phone");
+      if (readError) throw readError;
+      const saved = data?.find((profile) => profile.id === editing.id);
+      if (!saved || saved.full_name !== updated.full_name || saved.phone !== updated.phone)
+        throw new Error("Profile update was not confirmed.");
+      setProfiles(data ?? []);
       setEditing(null);
       toast({ title: "Profile updated" });
     } catch (error) {
@@ -104,105 +108,126 @@ const AdminDashboard = () => {
     }
   };
 
+  useEffect(() => {
+    const verifyAdmin = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        navigate("/auth");
+        return;
+      }
+      setCurrentUserId(user.id);
+
+      const { data: adminRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      if (!adminRole) {
+        toast({
+          title: "Access denied",
+          description: "This area is restricted to administrators.",
+          variant: "destructive",
+        });
+        navigate("/");
+        return;
+      }
+
+      setChecking(false);
+      loadData();
+      void loadFeedback();
+    };
+
+    verifyAdmin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const loadData = async () => {
     setLoading(true);
-    try {
-      const { data, error } = await supabase.rpc("admin_directory");
-      if (error || !data) throw new Error("Your access or connection could not be verified.");
-      const directory = data as unknown as {
-        profiles: Profile[];
-        roles: { user_id: string; role: AppRole }[];
-        doctors: DoctorProfile[];
-        cleanup_without_profile: { doctor_id: string; name: string | null }[];
-      };
-      setProfiles(directory.profiles);
-      setRoles(directory.roles);
-      setDoctorProfiles(directory.doctors);
-      setCleanupWithoutProfile(directory.cleanup_without_profile);
-    } catch (error) {
+    const [profilesRes, rolesRes, doctorsRes] = await Promise.all([
+      supabase.rpc("list_admin_profiles").select("id, full_name, email, phone"),
+      supabase.from("user_roles").select("user_id, role"),
+      supabase.from("doctor_profiles").select("id, user_id, license_number, specialization, is_verified"),
+    ]);
+
+    if (profilesRes.error || rolesRes.error) {
       toast({
         title: "Could not load users",
-        description: error instanceof Error ? error.message : "Please retry.",
+        description: profilesRes.error?.message || rolesRes.error?.message,
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
-  };
 
-  useEffect(() => {
-    setProfiles([]);
-    setRoles([]);
-    setDoctorProfiles([]);
-    setCleanupWithoutProfile([]);
-    setFeedback([]);
-    if (currentUserId) {
-      void loadData();
-      void loadFeedback();
-    }
-    // The account boundary unmounts the portal when access changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUserId]);
+    setProfiles(profilesRes.data ?? []);
+    setRoles((rolesRes.data as { user_id: string; role: AppRole }[]) ?? []);
+    setDoctorProfiles(doctorsRes.data ?? []);
+    setLoading(false);
+  };
 
   const rolesFor = (userId: string) => roles.filter((r) => r.user_id === userId).map((r) => r.role);
 
-  const closeDoctorRooms = async (doctorId: string) => {
-    const { data, error } = await supabase.functions.invoke("revoke-call-access", { body: { doctorId } });
-    if (error || data?.pending !== false) {
+  const removeFromCalls = async (doctorId: string) => {
+    const { error } = await supabase.functions.invoke("revoke-call-access", { body: { doctorId } });
+    if (error)
       toast({
-        title: "Video room cleanup pending",
-        description: "Retry closing the affected rooms from Doctor verification.",
+        title: "Could not end active calls",
+        description: "Access was removed, but the doctor may still be in a call. Try again.",
         variant: "destructive",
       });
-      return;
-    }
-    toast({ title: "Video room cleanup confirmed" });
-  };
-
-  const updateDoctorAccess = async (doctorId: string, enabled: boolean, key: string) => {
-    setBusyKey(key);
-    try {
-      const { error } = await supabase.rpc("admin_set_doctor_access", { _user_id: doctorId, _enabled: enabled });
-      if (error) {
-        toast({ title: "Update failed", description: error.message, variant: "destructive" });
-        return;
-      }
-      toast({ title: enabled ? "Doctor verified" : "Doctor access removed" });
-      if (!enabled) await closeDoctorRooms(doctorId);
-      await loadData();
-    } finally {
-      setBusyKey(null);
-    }
   };
 
   const toggleRole = async (userId: string, role: AppRole, hasRole: boolean) => {
     const key = `${userId}-${role}`;
-    if (role === "doctor") {
-      await updateDoctorAccess(userId, !hasRole, key);
-      return;
-    }
     setBusyKey(key);
-    try {
-      const { error } = await supabase.rpc("admin_set_basic_role", { _user_id: userId, _role: role, _enabled: !hasRole });
-      if (error) {
-        toast({ title: "Update failed", description: error.message, variant: "destructive" });
-        return;
-      }
-      toast({ title: hasRole ? "Role removed" : "Role granted" });
+
+    const { error } = hasRole
+      ? await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", role)
+      : await supabase.from("user_roles").insert({ user_id: userId, role });
+
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+    } else {
+      toast({
+        title: hasRole ? "Role removed" : "Role granted",
+        description: `${role} ${hasRole ? "revoked from" : "granted to"} the user.`,
+      });
+      if (hasRole && role === "doctor") await removeFromCalls(userId);
       await loadData();
-    } finally {
-      setBusyKey(null);
     }
+    setBusyKey(null);
   };
 
-  const retryRoomCleanup = async (doctorId: string) => {
-    setBusyKey(`cleanup-${doctorId}`);
-    try {
-      await closeDoctorRooms(doctorId);
+  const toggleVerification = async (doctor: DoctorProfile) => {
+    const key = `verify-${doctor.id}`;
+    setBusyKey(key);
+
+    const willVerify = !doctor.is_verified;
+    const { error } = await supabase.from("doctor_profiles").update({ is_verified: willVerify }).eq("id", doctor.id);
+
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+    } else {
+      // Sync the user_roles table with doctor role
+      if (willVerify) {
+        await supabase.from("user_roles").insert({ user_id: doctor.user_id, role: "doctor" });
+      } else {
+        await supabase.from("user_roles").delete().eq("user_id", doctor.user_id).eq("role", "doctor");
+      }
+
+      toast({
+        title: willVerify ? "Doctor verified" : "Verification removed",
+        description: willVerify
+          ? "Doctor verified and granted doctor portal access."
+          : "Verification and doctor role removed. The user no longer has dashboard access.",
+      });
+      if (!willVerify) await removeFromCalls(doctor.user_id);
       await loadData();
-    } finally {
-      setBusyKey(null);
     }
+    setBusyKey(null);
   };
 
   const createDoctor = async (e: React.FormEvent) => {
@@ -261,6 +286,14 @@ const AdminDashboard = () => {
     return p.full_name?.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q);
   });
 
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
@@ -282,20 +315,6 @@ const AdminDashboard = () => {
       </header>
 
       <main className="container mx-auto space-y-8 px-4 py-8">
-        {cleanupWithoutProfile.length > 0 && (
-          <Card>
-            <CardHeader><CardTitle className="text-base">Video room cleanup</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              {cleanupWithoutProfile.map(({ doctor_id, name }) => (
-                <div key={doctor_id} className="flex flex-wrap items-center justify-between gap-2">
-                  <span>{name || "Former doctor"}</span>
-                  <Button variant="outline" disabled={busyKey !== null}
-                    onClick={() => void retryRoomCleanup(doctor_id)}>Retry video room cleanup</Button>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-2 text-base"><MessageSquare className="h-4 w-4 text-primary" />{t("feedback.adminTitle")}</CardTitle>
@@ -387,7 +406,7 @@ const AdminDashboard = () => {
                             onClick={() => toggleRole(profile.id, role, hasRole)}
                           >
                             {busyKey === key && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-                            {hasRole ? `Remove ${role}` : role === "doctor" ? "Approve doctor" : `Grant ${role}`}
+                            {hasRole ? `Remove ${role}` : `Grant ${role}`}
                           </Button>
                         );
                       })}
@@ -506,17 +525,11 @@ const AdminDashboard = () => {
                       size="sm"
                       variant={doctor.is_verified ? "outline" : "default"}
                       disabled={busyKey === key}
-                      onClick={() => void updateDoctorAccess(doctor.user_id, !doctor.is_verified, `verify-${doctor.id}`)}
+                      onClick={() => toggleVerification(doctor)}
                     >
                       {busyKey === key && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
                       {doctor.is_verified ? "Revoke verification" : "Verify doctor"}
                     </Button>
-                    {doctor.cleanup_pending && (
-                      <Button variant="outline" disabled={busyKey !== null}
-                        onClick={() => void retryRoomCleanup(doctor.user_id)}>
-                        Retry video room cleanup
-                      </Button>
-                    )}
                   </div>
                 );
               })

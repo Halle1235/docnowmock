@@ -11,15 +11,3 @@ export function onForeground(refresh: () => void) {
     window.removeEventListener("focus", handleResume);
   };
 }
-
-/** Poll only while the current page is visible, then refresh as soon as it resumes. */
-export function onVisibleInterval(refresh: () => void, intervalMs: number) {
-  const timer = window.setInterval(() => {
-    if (document.visibilityState === "visible") refresh();
-  }, intervalMs);
-  const unsubscribe = onForeground(refresh);
-  return () => {
-    window.clearInterval(timer);
-    unsubscribe();
-  };
-}

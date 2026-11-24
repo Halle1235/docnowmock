@@ -1,4 +1,3 @@
-import { onVisibleInterval } from "@/lib/foreground";
 import { dailyStartOptions } from "@/lib/daily-presentation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -152,7 +151,6 @@ const VideoCall = () => {
   const callRef = useRef<DailyCall | null>(null);
   const joinedUrlRef = useRef<string | null>(null);
   const postCallJournal = useRef(false);
-  const localLeave = useRef(false);
   const [loading, setLoading] = useState(true);
   const [waitingForDoctor, setWaitingForDoctor] = useState(false);
   const [joinedCall, setJoinedCall] = useState<DailyCall | null>(null);
@@ -241,10 +239,7 @@ const VideoCall = () => {
       return;
     }
     let cancelled = false;
-    let sessionEnded = false;
-    let connecting = false;
-    let firstRead = true;
-    let initialJoin = true;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
     let meetingToken: string | undefined;
 
     const destroyExisting = async () => {
@@ -309,10 +304,10 @@ const VideoCall = () => {
           }
         });
         call.on("left-meeting", () => {
-          if (cancelled || callRef.current !== call) return;
-          joinedUrlRef.current = null;
           setJoinedCall(null);
-          if (!sessionEnded && !localLeave.current) setNetworkState("reconnecting");
+          navigate(postCallJournal.current ? "/doctor-dashboard" : "/my-visits", {
+            state: postCallJournal.current ? { journalId: consultationId } : null,
+          });
         });
         call.on("error", (ev: any) => toast.error(ev?.errorMsg || "Call error"));
         call.on("joined-meeting", () => {
@@ -324,8 +319,11 @@ const VideoCall = () => {
           }
         });
 
-        const { data: displayName } = await supabase.rpc("my_display_name");
-        if (displayName) setMyName(displayName);
+        const user = (await supabase.auth.getUser()).data.user;
+        const { data: profile } = user
+          ? await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle()
+          : { data: null };
+        if (profile?.full_name) setMyName(profile.full_name);
         if (cancelled) {
           try {
             await call.destroy();
@@ -338,7 +336,7 @@ const VideoCall = () => {
           url,
           token: meetingToken,
           ...dailyStartOptions,
-          userName: displayName || "Participant",
+          userName: profile?.full_name || "Participant",
         });
         if (cancelled) {
           try {
@@ -368,51 +366,22 @@ const VideoCall = () => {
       }
     };
 
-    const refreshRoom = async () => {
-      if (connecting || cancelled || sessionEnded || localLeave.current) return;
-      connecting = true;
+    const tryStart = async () => {
       try {
-        const { data: response, error: readError } = await supabase.rpc("my_call_state", {
-          _consultation_id: consultationId, _include_details: firstRead,
-        });
-        if (cancelled || localLeave.current) return;
-        if (readError || !response) {
-          if (readError?.code === "42501") {
-            sessionEnded = true;
-            void callRef.current?.leave();
-            setRoomExpired(true);
-            setLoading(false);
-            return;
-          }
-          throw new Error("Call status is temporarily unavailable");
-        }
-        const record = response as { status: string; is_doctor: boolean; room_ready: boolean; reason_description?: string };
-        if (firstRead) {
-          setRecordReason(record.reason_description || "");
-          firstRead = false;
-        }
-        setLiveDoctor(record.is_doctor);
-        if (["completed", "cancelled"].includes(record.status)) {
-          sessionEnded = true;
-          void callRef.current?.leave();
-          setRoomExpired(true);
-          setWaitingForDoctor(false);
-          setLoading(false);
-          return;
-        }
-        if (joinedUrlRef.current && callRef.current) return;
-        if (!record.room_ready && !record.is_doctor) {
-          setWaitingForDoctor(true);
-          setLoading(false);
-          return;
+        const { data: record } = await supabase.rpc("get_authorized_call_record", { _consultation_id: consultationId });
+        if (!cancelled && record && typeof record === "object" && "reason_description" in record) {
+          setRecordReason(String(record.reason_description || ""));
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!cancelled) setLiveDoctor(!!user && record.doctor_id === user.id);
         }
         const { data, error } = await supabase.functions.invoke("create-daily-room", { body: { consultationId } });
-        if (cancelled || localLeave.current) return;
+        if (cancelled) return;
         if (error) {
           const ctx: any = (error as any).context;
           const status = ctx?.status;
           if (status === 410) {
-            sessionEnded = true;
             setRoomExpired(true);
             setLoading(false);
             return;
@@ -429,32 +398,37 @@ const VideoCall = () => {
           throw new Error(bodyText || error.message || "Edge function failed");
         }
         if (!data?.url) throw new Error("No room URL returned");
-        setCallError(false);
-        setWaitingForDoctor(false);
         meetingToken = data.token;
         await join(data.url);
-        initialJoin = false;
-      } catch (error) {
-        if (cancelled || localLeave.current) return;
-        if (initialJoin) {
-          toast.error(error instanceof Error ? error.message : "Could not start the call");
-          initialJoin = false;
-        }
-        if (!joinedUrlRef.current) {
-          setLoading(false);
-          setCallError(true);
-        }
-      } finally {
-        connecting = false;
+      } catch (e: any) {
+        if (cancelled) return;
+        toast.error(e?.message || "Could not start the call");
+        setLoading(false);
+        setCallError(true);
       }
     };
 
-    void refreshRoom();
-    const unsubscribe = onVisibleInterval(() => { void refreshRoom(); }, 5000);
+    tryStart();
+    channel = supabase
+      .channel(`videocall-${consultationId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "consultations", filter: `id=eq.${consultationId}` },
+        (payload) => {
+          if (["completed", "cancelled"].includes((payload.new as any)?.status)) {
+            void callRef.current?.leave();
+            setRoomExpired(true);
+            return;
+          }
+          const url = (payload.new as any)?.room_url;
+          if (url && joinedUrlRef.current !== url) tryStart();
+        },
+      )
+      .subscribe();
 
     return () => {
       cancelled = true;
-      unsubscribe();
+      if (channel) supabase.removeChannel(channel);
       if (callRef.current) {
         try {
           callRef.current.destroy();
@@ -466,8 +440,7 @@ const VideoCall = () => {
   }, [consultationId, navigate]);
 
   const leave = async () => {
-    if (ending || localLeave.current) return;
-    localLeave.current = true;
+    if (ending) return;
     if (liveDoctor && consultationId) {
       postCallJournal.current = true;
       setEnding(true);
@@ -477,7 +450,6 @@ const VideoCall = () => {
       setEnding(false);
       if (error) {
         postCallJournal.current = false;
-        localLeave.current = false;
         toast.error("Room closure could not be confirmed. Please retry ending the consultation.");
         return;
       }
@@ -497,8 +469,6 @@ const VideoCall = () => {
   };
 
   const exitToDashboard = () => {
-    if (localLeave.current) return;
-    localLeave.current = true;
     if (callRef.current) {
       try {
         void callRef.current.leave();
@@ -816,8 +786,8 @@ const VideoCall = () => {
             <AlertDialogTitle>{liveDoctor ? "Leave or End consultation?" : "Leave the consultation?"}</AlertDialogTitle>
             <AlertDialogDescription>
               {liveDoctor
-                ? "You can exit to the dashboard and rejoin while the room is open, or end the consultation for both participants."
-                : "You can rejoin from My Visits while the consultation is open."}
+                ? "You can exit to the dashboard and rejoin at any time, or permanently end the consultation for both participants."
+                : "You can rejoin from your waiting room while your doctor is still in the call."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">

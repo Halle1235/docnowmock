@@ -1,4 +1,3 @@
-import { onVisibleInterval } from "@/lib/foreground";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -91,7 +90,16 @@ const LiveDoctorDashboard = () => {
       if (allowed) loadConsultations();
     });
 
-    return onVisibleInterval(() => { void loadConsultations(); }, 15000);
+    const channel = supabase
+      .channel("consultations-doctor-dashboard")
+      .on("postgres_changes", { event: "*", schema: "public", table: "consultations" }, () => {
+        loadConsultations();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const checkAuth = async () => {
@@ -106,33 +114,37 @@ const LiveDoctorDashboard = () => {
 
     setUserEmail(user.email || "");
 
-    const { data, error } = await supabase.rpc("my_doctor_details");
+    const [verifiedRes, profileRes, docProfileRes] = await Promise.all([
+      supabase.rpc("is_authorized_doctor", { _user_id: user.id }),
+      supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+      supabase
+        .from("doctor_profiles")
+        .select("specialization, license_number, is_available")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+    ]);
 
-    if (error || !data) {
+    if (verifiedRes.error || !verifiedRes.data) {
       toast({
         title: t("dashboard.accessDenied"),
         description: t("dashboard.approvalRequired"),
         variant: "destructive",
       });
-      setLoading(false);
+      navigate("/my-visits");
       return false;
     }
 
-    const details = data as { full_name?: string; specialization?: string; license_number?: string; is_available?: boolean };
     setDoctorInfo({
-      fullName: details.full_name || user.email?.split("@")[0] || t("dashboard.doctorFallback"),
-      specialization: details.specialization || "",
-      licenseNumber: details.license_number || "",
-      isAvailable: details.is_available ?? null,
+      fullName: profileRes.data?.full_name || user.email?.split("@")[0] || t("dashboard.doctorFallback"),
+      specialization: docProfileRes.data?.specialization || "",
+      licenseNumber: docProfileRes.data?.license_number || "",
+      isAvailable: docProfileRes.data?.is_available ?? null,
     });
 
     return true;
   };
 
-  const consultationLoad = useRef(false);
   const loadConsultations = async (isManual = false) => {
-    if (consultationLoad.current) return;
-    consultationLoad.current = true;
     if (isManual) setRefreshing(true);
     try {
       const {
@@ -154,7 +166,6 @@ const LiveDoctorDashboard = () => {
     } finally {
       setLoading(false);
       if (isManual) setRefreshing(false);
-      consultationLoad.current = false;
     }
   };
 
@@ -194,6 +205,18 @@ const LiveDoctorDashboard = () => {
       setClaimingId(null);
     }
   };
+
+  useEffect(() => {
+    const refresh = () => {
+      void loadConsultations();
+    };
+    window.addEventListener("focus", refresh);
+    const timer = window.setInterval(refresh, 15000);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.clearInterval(timer);
+    };
+  }, []);
 
   const startVideo = (consultationId: string) => {
     navigate(`/call/${consultationId}`);

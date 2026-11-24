@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAccount } from "@/components/AccountProvider";
 import { useBookingDraft } from "@/components/BookingDraftProvider";
-import { onVisibleInterval } from "@/lib/foreground";
+import { onForeground } from "@/lib/foreground";
 import { cancelMyWaitingBooking } from "@/lib/booking-continuity";
 import { activeVisitPath, canCancelWaitingBooking, isActiveVisit, orderVisitsByActivity } from "@/lib/visit-continuity";
 import {
@@ -50,8 +50,8 @@ interface Visit {
   created_at: string | null;
   reason_category: string | null;
   status: string;
-  room_ready: boolean;
-  doctor_assigned: boolean;
+  room_url: string | null;
+  doctor_id: string | null;
   payment_status: string;
   visit_summary: VisitSummary | null;
   visit_summary_approved_at: string | null;
@@ -90,7 +90,6 @@ const LiveMyVisits = () => {
     onError: () => toast.error(t("history.cancelError")),
   });
   const orderedVisits = orderVisitsByActivity(visits);
-  const activeVisit = !loading && !failed ? visits.find(isActiveVisit) : undefined;
   const bookFollowUp = () => {
     clearDraft();
     navigate("/registration");
@@ -99,42 +98,41 @@ const LiveMyVisits = () => {
   useEffect(() => {
     if (!userId) return;
     let active = true;
-    let fetching = false;
-    setVisits([]);
-    setPatientName("");
+    let request = 0;
     setPatientEmail(user?.email || "");
-    setFeedbackByVisit(new Set());
-    setFeedbackAvailable(false);
-    void myVisitFeedback().then(items => {
-      if (active) {
-        setFeedbackByVisit(new Set(items.map(item => item.consultation_id)));
-        setFeedbackAvailable(true);
-      }
-    }).catch(() => { if (active) setFeedbackAvailable(false); });
-    void supabase.rpc("my_display_name").then(({ data }) => {
-      if (active && data) setPatientName(data);
-    });
     const load = async () => {
-      if (fetching) return;
-      fetching = true;
-      try {
-        const { data, error } = await supabase.rpc("my_visits");
-        if (!active) return;
-        setFailed(!!error);
-        if (!error) setVisits((data as unknown as Visit[]) || []);
-      } catch {
-        if (active) setFailed(true);
-      } finally {
-        fetching = false;
-        if (active) setLoading(false);
-      }
+      const current = ++request;
+      void myVisitFeedback().then((items) => {
+        if (active && current === request) {
+          setFeedbackByVisit(new Set(items.map(item => item.consultation_id)));
+          setFeedbackAvailable(true);
+        }
+      }).catch(() => { if (active && current === request) setFeedbackAvailable(false); });
+      const [consultRes, profileRes] = await Promise.all([
+        supabase
+          .from("consultations")
+          .select("id, created_at, reason_category, status, room_url, doctor_id, payment_status, visit_summary, visit_summary_approved_at")
+          .eq("patient_id", userId)
+          .order("created_at", { ascending: false }),
+        supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
+      ]);
+      if (!active || current !== request) return;
+      setFailed(!!consultRes.error);
+      if (!consultRes.error) setVisits((consultRes.data as unknown as Visit[]) || []);
+      if (profileRes.data?.full_name) setPatientName(profileRes.data.full_name);
+      setLoading(false);
     };
 
     void load();
-    const unsubscribe = onVisibleInterval(() => { void load(); }, 15000);
+    const channel = supabase
+      .channel(`my-visits-${crypto.randomUUID()}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "consultations", filter: `patient_id=eq.${userId}` }, load)
+      .subscribe((state) => { if (state === "SUBSCRIBED") void load(); });
+    const unsubscribe = onForeground(() => { void load(); });
     return () => {
       active = false;
       unsubscribe();
+      void supabase.removeChannel(channel);
     };
   }, [userId, attempt, user?.email]);
 
@@ -239,19 +237,10 @@ const LiveMyVisits = () => {
               </div>
             </div>
 
-            <div className="flex flex-col gap-2 sm:items-end">
-              {activeVisit && (
-                <Button onClick={() => navigate(activeVisitPath(activeVisit))} className="gap-2 font-semibold">
-                  <Video aria-hidden="true" className="h-4 w-4" />
-                  {t("history.resumeVisit")}
-                </Button>
-              )}
-              <Button variant={activeVisit ? "outline" : "default"} onClick={() => navigate("/registration")}
-                className="gap-2 font-semibold">
-                <Plus aria-hidden="true" className="h-4 w-4" />
-                Book consultation
-              </Button>
-            </div>
+            <Button onClick={() => navigate("/registration")} className="gap-2 shadow-sm font-semibold shrink-0">
+              <Plus className="h-4 w-4" />
+              Book consultation
+            </Button>
           </div>
         </div>
 
@@ -349,7 +338,7 @@ const LiveMyVisits = () => {
                         <div className="flex flex-wrap gap-2">
                           <Button size="sm" onClick={() => navigate(activeVisitPath(v))} className="gap-2 font-semibold shadow-sm text-xs">
                             <Video className="h-3.5 w-3.5" />
-                            {t(v.room_ready && v.status !== "pending" ? "history.join" : "history.resume")}
+                            {t(v.room_url && v.status !== "pending" ? "history.join" : "history.resume")}
                           </Button>
                           {canCancelWaitingBooking(v) && (
                             <AlertDialog>

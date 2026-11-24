@@ -1,7 +1,6 @@
 import type { Json } from "@/integrations/supabase/types";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,12 +26,17 @@ export interface VisitSummary {
   self_care: string[];
   warning_signs: string[];
   follow_up: string;
-  follow_up_recommended?: boolean;
 }
 
 export const SummaryView = ({ s, onBookFollowUp }: { s: VisitSummary; onBookFollowUp?: () => void }) => {
   const { t } = useTranslation();
-  const nextStep = s.follow_up?.trim();
+  const followUp = (
+    <div className={onBookFollowUp ? "space-y-2 rounded-md bg-card p-3" : undefined}>
+      <h4 className="font-semibold text-sm mb-1">{t("history.followUp")}</h4>
+      {s.follow_up && <p className="text-sm text-muted-foreground">{s.follow_up}</p>}
+      {onBookFollowUp && <Button variant="outline" onClick={onBookFollowUp}>{t("history.bookFollowUp")}</Button>}
+    </div>
+  );
   const List = ({ title, items }: { title: string; items: string[] }) =>
     items?.length ? (
       <div>
@@ -47,15 +51,7 @@ export const SummaryView = ({ s, onBookFollowUp }: { s: VisitSummary; onBookFoll
 
   return (
     <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
-      {nextStep && (
-        <div className="space-y-2 rounded-md border border-primary/20 bg-card p-3">
-          <h4 className="font-semibold text-sm">{t("history.nextStep")}</h4>
-          <p className="text-sm whitespace-pre-wrap">{nextStep}</p>
-          {onBookFollowUp && s.follow_up_recommended === true && (
-            <Button variant="outline" onClick={onBookFollowUp}>{t("history.bookFollowUp")}</Button>
-          )}
-        </div>
-      )}
+      {onBookFollowUp && followUp}
       {s.overview && (
         <div>
           <h4 className="font-semibold text-sm mb-1">Clinical Overview</h4>
@@ -84,6 +80,7 @@ export const SummaryView = ({ s, onBookFollowUp }: { s: VisitSummary; onBookFoll
       )}
       <List title="Self-care & Recommendations" items={s.self_care} />
       <List title="When to seek urgent care" items={s.warning_signs} />
+      {!onBookFollowUp && s.follow_up && followUp}
       <p className="text-[11px] text-muted-foreground pt-1 border-t border-border/50">
         Doctor-approved clinical consultation summary. In a medical emergency call 998.
       </p>
@@ -110,7 +107,6 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
   );
   const [selfCare, setSelfCare] = useState(initialSummary?.self_care?.join("\n") || "");
   const [followUp, setFollowUp] = useState(initialSummary?.follow_up || "");
-  const [recommendFollowUp, setRecommendFollowUp] = useState(initialSummary?.follow_up_recommended === true);
 
   const [summary, setSummary] = useState<VisitSummary | null>(initialSummary || null);
   const [approved, setApproved] = useState(!!initialSummary);
@@ -142,7 +138,6 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
         setSelfCare(saved?.self_care?.join("\n") ?? "");
         setWarnings(saved?.warning_signs?.join("\n") ?? "");
         setFollowUp(saved?.follow_up ?? "");
-        setRecommendFollowUp(saved?.follow_up_recommended === true);
         setLoadState("ready");
       } catch {
         if (active) setLoadState("failed");
@@ -158,13 +153,13 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
       return;
     }
 
-    if (recommendFollowUp && !followUp.trim()) {
-      toast.error(t("history.nextStepRequired"));
-      return;
-    }
-
     setSaving(true);
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       const medList = medications
         .split("\n")
         .map((s) => s.trim())
@@ -191,27 +186,44 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
           .filter(Boolean),
         warning_signs: warnings.split("\n").map(line => line.trim()).filter(Boolean),
         follow_up: followUp.trim(),
-        follow_up_recommended: recommendFollowUp,
       };
 
-      const journalTreatment = [
-        treatmentPlan.trim() ? `Plan: ${treatmentPlan.trim()}` : "",
-        medications.trim() ? `Medications: ${medications.trim()}` : "",
-        selfCare.trim() ? `Self-care: ${selfCare.trim()}` : "",
-      ].filter(Boolean).join("\n\n");
+      const { error } = await supabase
+        .from("consultations")
+        .update({
+          notes: notes.trim(),
+          visit_summary: summaryObj as unknown as Json,
+          visit_summary_approved_at: new Date().toISOString(),
+          visit_summary_approved_by: user.id,
+        })
+        .eq("id", consultationId)
+        .select("id")
+        .single();
 
-      if (journalTreatment.length > 4000) {
-        toast.error("Keep the combined treatment, medications, and recovery guidance under 4,000 characters.");
-        return;
-      }
-
-      const { error } = await supabase.rpc("save_assigned_visit_summary", {
-        _consultation_id: consultationId,
-        _notes: notes.trim(),
-        _summary: summaryObj as unknown as Json,
-        _journal_treatment: journalTreatment,
-      });
       if (error) throw error;
+
+      // Automatically sync clinical findings to patient journal timeline
+      if (notes.trim()) {
+        try {
+          const treatmentCombined = [
+            treatmentPlan.trim() ? `Plan: ${treatmentPlan.trim()}` : "",
+            medications.trim() ? `Medications: ${medications.trim()}` : "",
+            selfCare.trim() ? `Self-care: ${selfCare.trim()}` : "",
+          ]
+            .filter(Boolean)
+            .join("\n\n");
+
+          const { error: journalError } = await supabase.rpc("add_patient_journal_entry", {
+            _consultation_id: consultationId,
+            _diagnosis: diagnosis.trim(),
+            _treatment: treatmentCombined,
+            _notes: notes.trim(),
+          });
+          if (journalError) throw journalError;
+        } catch {
+          toast.warning("The summary was saved, but the journal entry could not be added.");
+        }
+      }
 
       setSummary(summaryObj);
       setApproved(true);
@@ -364,7 +376,7 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
 
             <div className="space-y-1.5">
               <Label htmlFor="summary-followup" className="text-xs font-semibold">
-                {t("history.nextStep")}
+                Follow-Up Guidance
               </Label>
               <Input
                 id="summary-followup" maxLength={1000}
@@ -373,11 +385,6 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
                 placeholder="e.g. Return for re-evaluation in 5 days if fever persists or symptoms worsen."
                 className="text-xs"
               />
-              <div className="flex items-start gap-2 pt-2">
-                <Checkbox id="summary-recommend-followup" checked={recommendFollowUp}
-                  onCheckedChange={checked => setRecommendFollowUp(checked === true)} />
-                <Label htmlFor="summary-recommend-followup" className="leading-snug">{t("history.recommendFollowUp")}</Label>
-              </div>
             </div>
 
             <Button

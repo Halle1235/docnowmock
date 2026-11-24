@@ -54,7 +54,7 @@ const Registration = () => {
     setEmail(user.email || "");
     let active = true;
     setLoadingProfile(true);
-    void supabase.rpc("my_booking_profile").then(({ data: profile }) => {
+    void supabase.from("profiles").select("full_name, phone, passport_number, date_of_birth, identification_type, emirates_id, contact_email").eq("id", user.id).maybeSingle().then(({ data: profile }) => {
       if (!active || !profile) return;
       const data = profile as Record<"full_name" | "phone" | "passport_number" | "date_of_birth" | "identification_type" | "emirates_id" | "contact_email", string | null>;
       const contact = splitBookingPhone(data.phone || "");

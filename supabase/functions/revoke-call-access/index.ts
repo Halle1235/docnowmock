@@ -1,44 +1,64 @@
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
-import { callCors, callJson, dailyRooms, isUuid, type CleanupTarget } from "../_shared/daily-rooms.ts";
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+// Admin-only: eject a doctor whose access was withdrawn from every active consultation room.
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: callCors });
-  if (req.method !== "POST") return callJson({ error: "Method not allowed" }, 405);
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const url = Deno.env.get("SUPABASE_URL");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!url || !anonKey || !serviceKey) throw new Error("Video service is not configured");
-    const authorization = req.headers.get("Authorization");
-    if (!authorization) return callJson({ error: "Sign in required" }, 401);
-    const user = createClient(url, anonKey, { global: { headers: { Authorization: authorization } } });
-    const { data: { user: actor }, error: authError } = await user.auth.getUser();
-    if (authError || !actor) return callJson({ error: "Sign in required" }, 401);
-    const server = createClient(url, serviceKey);
-    const { data: admin, error: roleError } = await server.rpc("has_role", { _user_id: actor.id, _role: "admin" });
-    if (roleError || admin !== true) return callJson({ error: "Administrator required" }, 403);
-    const body = await req.json().catch(() => null);
-    if (!isUuid(body?.doctorId)) return callJson({ error: "Invalid doctor ID" }, 400);
-    const cancelled = await user.rpc("admin_close_revoked_doctor_visits", { _user_id: body.doctorId });
-    if (cancelled.error) throw new Error("Could not close affected consultations");
-    const targets = await server.rpc("video_room_cleanup_targets", { _doctor_id: body.doctorId });
-    if (targets.error) throw new Error("Could not load room cleanup");
-    let closed = 0;
-    for (const room of (targets.data ?? []) as CleanupTarget[]) {
-      try {
-        if (!await dailyRooms().close(room)) continue;
-        const saved = await server.rpc("mark_video_room_cleaned", {
-          _consultation_id: room.consultation_id, _name: room.name,
-        });
-        if (saved.data === true) closed++;
-      } catch {
-        // Leave this room pending and keep processing the doctor's other rooms.
-      }
+    const DAILY_API_KEY = Deno.env.get("DAILY_API_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!DAILY_API_KEY || !SUPABASE_URL || !SERVICE_KEY) throw new Error("Backend not configured");
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return json({ error: "Missing auth" }, 401);
+    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") || "", {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !userData.user) return json({ error: "Unauthorized" }, 401);
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    const { data: isAdmin } = await admin.rpc("has_role", { _user_id: userData.user.id, _role: "admin" });
+    if (isAdmin !== true) return json({ error: "Forbidden" }, 403);
+
+    const body = await req.json().catch(() => ({}));
+    const doctorId = String(body.doctorId || "");
+    if (!/^[0-9a-f-]{36}$/i.test(doctorId)) return json({ error: "Invalid doctorId" }, 400);
+
+    // Only eject if the doctor really lacks access now.
+    const [{ data: role }, { data: profile }] = await Promise.all([
+      admin.from("user_roles").select("role").eq("user_id", doctorId).eq("role", "doctor").maybeSingle(),
+      admin.from("doctor_profiles").select("is_verified").eq("user_id", doctorId).maybeSingle(),
+    ]);
+    if (role && profile?.is_verified === true) return json({ ejected: 0, skipped: "Doctor still has access" });
+
+    const { data: visits, error } = await admin
+      .from("consultations")
+      .select("room_url")
+      .eq("doctor_id", doctorId)
+      .in("status", ["claimed", "in_progress"])
+      .not("room_url", "is", null);
+    if (error) throw error;
+    let ejected = 0;
+    for (const v of visits ?? []) {
+      const name = new URL(v.room_url as string).pathname.replace(/^\//, "");
+      if (!/^[A-Za-z0-9_-]+$/.test(name)) continue;
+      const r = await fetch(`https://api.daily.co/v1/rooms/${name}/eject`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${DAILY_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ user_ids: [doctorId] }),
+      });
+      await r.text();
+      if (r.ok) ejected++;
+      else if (r.status !== 404) throw new Error("Could not remove the doctor from an active call");
     }
-    const pending = await server.rpc("video_room_cleanup_pending", { _doctor_id: body.doctorId });
-    if (pending.error) throw new Error("Could not confirm room cleanup");
-    return callJson({ closed, pending: pending.data === true });
-  } catch {
-    return callJson({ error: "Room cleanup could not be confirmed. Please retry." }, 503);
+    return json({ ejected });
+  } catch (e) {
+    return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
   }
 });
