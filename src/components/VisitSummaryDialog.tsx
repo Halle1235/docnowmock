@@ -301,7 +301,7 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
                 Diagnosis / Clinical Findings
               </Label>
               <Input
-                id="summary-diag"
+                id="summary-diag" maxLength={1000}
                 value={diagnosis}
                 onChange={(e) => setDiagnosis(e.target.value)}
                 placeholder="e.g. Acute viral pharyngitis, Contact dermatitis"
@@ -330,7 +330,7 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
                   Treatment & Prescriptions
                 </Label>
                 <Textarea
-                  id="summary-treatment"
+                  id="summary-treatment" maxLength={4000}
                   value={treatmentPlan}
                   onChange={(e) => setTreatmentPlan(e.target.value)}
                   rows={3}
@@ -344,7 +344,7 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
                   Medications & Dosages
                 </Label>
                 <Textarea
-                  id="summary-meds"
+                  id="summary-meds" maxLength={4000}
                   value={medications}
                   onChange={(e) => setMedications(e.target.value)}
                   rows={3}
@@ -359,7 +359,7 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
                 Patient Self-Care & Recovery Guidance
               </Label>
               <Textarea
-                id="summary-advice"
+                id="summary-advice" maxLength={4000}
                 value={selfCare}
                 onChange={(e) => setSelfCare(e.target.value)}
                 rows={2}
@@ -378,7 +378,7 @@ const VisitSummaryDialog = ({ consultationId, initialNotes, initialSummary, onSa
                 Follow-Up Guidance
               </Label>
               <Input
-                id="summary-followup"
+                id="summary-followup" maxLength={1000}
                 value={followUp}
                 onChange={(e) => setFollowUp(e.target.value)}
                 placeholder="e.g. Return for re-evaluation in 5 days if fever persists or symptoms worsen."

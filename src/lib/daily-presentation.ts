@@ -1,8 +1,10 @@
 /** Daily requires hex values; these adapter tokens remain owned by global CSS. */
+export const dailyStartOptions = { startAudioOff: true } as const;
+
 export function dailyPresentation(readToken: (name: string) => string) {
   const read = (name: string) => readToken(name).trim();
   return {
-    startAudioOff: true,
+    ...dailyStartOptions,
     theme: { colors: {
       accent: read("--daily-accent"),
       accentText: read("--daily-foreground"),

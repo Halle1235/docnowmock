@@ -1,3 +1,4 @@
+import { dailyStartOptions } from "@/lib/daily-presentation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import DailyIframe, { type DailyCall, type DailyParticipant } from "@daily-co/daily-js";
@@ -266,7 +267,7 @@ const VideoCall = () => {
       await destroyExisting();
       if (cancelled) return;
       try {
-        const call = DailyIframe.createCallObject({ startAudioOff: false });
+        const call = DailyIframe.createCallObject(dailyStartOptions);
         callRef.current = call;
         joinedUrlRef.current = url;
         const sync = () => {
@@ -314,9 +315,6 @@ const VideoCall = () => {
             setLoading(false);
             setWaitingForDoctor(false);
             setJoinedCall(call);
-            try {
-              call.setLocalAudio(true);
-            } catch {}
             sync();
           }
         });
@@ -337,7 +335,7 @@ const VideoCall = () => {
         await call.join({
           url,
           token: meetingToken,
-          startAudioOff: false,
+          ...dailyStartOptions,
           userName: profile?.full_name || "Participant",
         });
         if (cancelled) {
@@ -351,9 +349,6 @@ const VideoCall = () => {
         setLoading(false);
         setWaitingForDoctor(false);
         setJoinedCall(call);
-        try {
-          call.setLocalAudio(true);
-        } catch {}
         sync();
       } catch (e: any) {
         if (!cancelled) {
